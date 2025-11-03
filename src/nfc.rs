@@ -11,9 +11,9 @@ use crate::math::{
 use crate::modifier::{Modifier, ModifierFlags};
 use crate::oddschange::OddsChange;
 use crate::round_data::RoundData;
-use crate::utils::{argsort_slice_3124, get_dst_offset};
+use crate::utils::argsort_slice_3124;
 use chrono::{DateTime, Utc};
-use chrono_tz::Tz;
+use chrono_tz::{OffsetComponents, Tz};
 use itertools::Itertools;
 use rand::seq::IteratorRandom;
 use serde::{Deserialize, Serialize};
@@ -373,7 +373,15 @@ impl NeoFoodClub {
             .checked_add_signed(chrono::Duration::try_days(1).unwrap())
             .unwrap();
 
-        let difference = get_dst_offset(day_after);
+        // Calculate DST offset difference between start_date and day_after
+        // by comparing their NST offsets
+        let start_nst = crate::utils::convert_from_utc_to_nst(start_date);
+        let day_after_nst = crate::utils::convert_from_utc_to_nst(day_after);
+
+        let start_offset = start_nst.offset().dst_offset();
+        let day_after_offset = day_after_nst.offset().dst_offset();
+
+        let difference = day_after_offset - start_offset;
 
         let now = chrono::Utc::now();
 

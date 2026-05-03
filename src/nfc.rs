@@ -70,7 +70,7 @@ pub struct NeoFoodClub {
     arenas: OnceCell<Arenas>,
     stds: OnceCell<[[f64; 5]; 5]>,
     data: OnceCell<RoundDictData>,
-    max_ter_indices: OnceCell<Vec<usize>>,
+    max_ter_indices: OnceCell<Box<[usize; 3124]>>,
     net_expected_indices: OnceCell<Vec<f64>>,
     clamped_max_bets: OnceCell<Vec<u32>>,
 }
@@ -111,6 +111,8 @@ impl NeoFoodClub {
     pub fn set_bet_amount(&mut self, amount: Option<u32>) {
         self.bet_amount = amount.map(|x| x.clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX));
         self.clamped_max_bets = OnceCell::new();
+        self.net_expected_indices = OnceCell::new();
+        self.max_ter_indices = OnceCell::new();
     }
 
     /// Lazy loads the Arenas object.
@@ -434,20 +436,19 @@ impl NeoFoodClub {
         }
     }
 
-    /// Returns max-TER indices.
-    fn max_ter_indices(&self) -> Vec<usize> {
-        let use_ers = self.max_ters();
-
-        let mut indices = argsort_slice_3124(use_ers, |a: &f64, b: &f64| a.total_cmp(b));
-
-        let reverse = self.modifier.is_reverse();
-        // since it's reversed to begin with, we reverse it if
-        // the modifier does not have the reverse flag
-        if !reverse {
-            indices.reverse();
-        }
-
-        indices.to_vec()
+    /// Returns max-TER indices (best-first), computed once and cached per `NeoFoodClub` state.
+    fn max_ter_indices(&self) -> &[usize] {
+        self.max_ter_indices
+            .get_or_init(|| {
+                let use_ers = self.max_ters();
+                let mut indices = argsort_slice_3124(use_ers, |a: &f64, b: &f64| a.total_cmp(b));
+                // sorted ascending by TER; reverse order unless REVERSE modifier
+                if !self.modifier.is_reverse() {
+                    indices.reverse();
+                }
+                indices
+            })
+            .as_slice()
     }
 
     /// Returns sorted indices of odds
@@ -484,11 +485,12 @@ impl NeoFoodClub {
 
     /// Return the binary representation of the highest expected return full-arena bet.
     fn get_highest_er_full_bet(&self) -> u32 {
-        let max_ter_indices = self.max_ter_indices();
         let data = self.round_dict_data();
 
-        let index = max_ter_indices
-            .into_iter()
+        let index = self
+            .max_ter_indices()
+            .iter()
+            .copied()
             .find(|&index| data.bins[index].count_ones() == 5)
             .unwrap();
 
@@ -508,9 +510,9 @@ impl NeoFoodClub {
     /// Creates a Bets object that consists of all max-TER bets.
     /// This is mostly for debugging purposes.
     pub fn make_all_max_ter_bets(&self) -> Bets {
-        let indices = self.max_ter_indices();
+        let indices = self.max_ter_indices().to_vec();
 
-        let mut bets = Bets::new(self, indices.to_vec());
+        let mut bets = Bets::new(self, indices);
         bets.fill_bet_amounts(self);
         bets
     }
@@ -562,7 +564,7 @@ impl NeoFoodClub {
             .max_ter_indices()
             .iter()
             .take(self.max_amount_of_bets())
-            .cloned()
+            .copied()
             .collect();
 
         let mut bets = Bets::new(self, indices);

@@ -156,6 +156,8 @@ impl NeoFoodClub {
             || (current_modifier.custom_odds != modifier.custom_odds
                 || current_modifier.custom_time != modifier.custom_time
                 || current_modifier.is_opening_odds() != modifier.is_opening_odds())
+            || current_modifier.is_reverse() != modifier.is_reverse()
+            || current_modifier.is_general() != modifier.is_general()
         {
             self.clear_caches();
         }

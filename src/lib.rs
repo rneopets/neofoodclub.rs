@@ -1,4 +1,5 @@
 pub mod arena;
+pub mod error;
 pub mod bets;
 pub mod chance;
 pub mod food_adjustments;

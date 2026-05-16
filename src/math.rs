@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
+use itertools::Itertools;
 use rand::RngExt;
 
 use crate::chance::Chance;
@@ -226,7 +227,8 @@ pub fn bet_amounts_to_amounts_hash(bet_amounts: &[Option<u32>]) -> String {
         }
     }
 
-    // Safety: we only write ASCII [a-zA-Z] bytes.
+    // SAFETY: every byte written is a letter_index offset from b'a' or b'A',
+    // both of which are ASCII; the result vec contains only valid UTF-8.
     unsafe { String::from_utf8_unchecked(result) }
 }
 
@@ -317,15 +319,8 @@ pub fn bets_hash_value(bets_indices: Vec<[u8; 5]>) -> String {
         .into_iter()
         .flatten()
         .chain(std::iter::once(0).take(len & 1))
-        .collect::<Vec<u8>>()
-        .chunks_exact(2)
-        .map(|chunk| {
-            // char_index is the index of the character in the alphabet
-            // 0 = a, 1 = b, 2 = c, ..., 25 = z
-            let char_index = chunk[0] * 5 + chunk[1];
-            // b'a' is the byte literal for the ASCII "a", which is 97
-            (b'a' + char_index) as char
-        })
+        .tuples::<(u8, u8)>()
+        .map(|(a, b)| (b'a' + a * 5 + b) as char)
         .collect()
 }
 
@@ -426,6 +421,8 @@ pub struct RoundDictData {
     pub odds: Vec<u32>,
     pub ers: Vec<f64>,
     pub maxbets: Vec<u32>,
+    /// Maps binary representation to index in the above vecs. O(1) lookup.
+    pub bin_index: HashMap<u32, usize>,
 }
 
 pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictData {
@@ -434,6 +431,7 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
     let mut odds_vec: Vec<u32> = Vec::with_capacity(3124);
     let mut ers: Vec<f64> = Vec::with_capacity(3124);
     let mut maxbets: Vec<u32> = Vec::with_capacity(3124);
+    let mut bin_index: HashMap<u32, usize> = HashMap::with_capacity(3124);
 
     for a in 0..5 {
         for b in 0..5 {
@@ -464,6 +462,8 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
                         let er = total_probs * total_odds as f64;
                         let maxbet = (1_000_000.0 / total_odds as f64).ceil() as u32;
 
+                        let idx = bins.len();
+                        bin_index.insert(total_bin, idx);
                         bins.push(total_bin);
                         probs.push(total_probs);
                         odds_vec.push(total_odds);
@@ -481,6 +481,7 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
         odds: odds_vec,
         ers,
         maxbets,
+        bin_index,
     }
 }
 

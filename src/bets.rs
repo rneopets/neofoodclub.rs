@@ -223,10 +223,10 @@ impl Bets {
 
     /// Creates a new Bets struct from a list of binaries
     pub fn from_binaries(nfc: &NeoFoodClub, binaries: Vec<u32>) -> Self {
-        // maintaining the order of the binaries is important, at the cost of some performance
+        let data = nfc.round_dict_data();
         let bin_indices: Vec<usize> = binaries
             .iter()
-            .filter_map(|b| nfc.round_dict_data().bins.iter().position(|bin| bin == b))
+            .filter_map(|b| data.bin_index.get(b).copied())
             .collect();
 
         Self::new(nfc, bin_indices)
@@ -266,8 +266,8 @@ impl Bets {
     }
 
     /// Returns the bet binaries
-    pub fn get_binaries(&self) -> Vec<u32> {
-        self.bet_binaries.to_vec()
+    pub fn get_binaries(&self) -> &[u32] {
+        &self.bet_binaries
     }
 
     /// Returns a string of the hash of the bets
@@ -425,6 +425,8 @@ impl Bets {
 
         let arenas = nfc.get_arenas();
 
+        let data = nfc.round_dict_data();
+
         for (bet_index, (bet_binary, bet_indices)) in self
             .get_binaries()
             .iter()
@@ -433,18 +435,13 @@ impl Bets {
         {
             let mut row = vec![(bet_index + 1).to_string()];
 
-            let bin_index = nfc
-                .round_dict_data()
-                .bins
-                .iter()
-                .position(|&r| r == *bet_binary)
-                .unwrap();
+            let bin_index = *data.bin_index.get(bet_binary).unwrap();
 
             let hex = format!("0x{bet_binary:0>5X}");
 
             row.extend(vec![
-                nfc.round_dict_data().odds[bin_index].to_string(),
-                format!("{:.3}:1", nfc.round_dict_data().ers[bin_index]),
+                data.odds[bin_index].to_string(),
+                format!("{:.3}:1", data.ers[bin_index]),
             ]);
 
             if !nes.is_empty() {
@@ -452,7 +449,7 @@ impl Bets {
             }
 
             row.extend(vec![
-                nfc.round_dict_data().maxbets[bin_index].to_string(),
+                data.maxbets[bin_index].to_string(),
                 hex,
             ]);
 

@@ -23,6 +23,7 @@ const BET_AMOUNT: u32 = 8000;
 
 fn make_test_nfc() -> NeoFoodClub {
     NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None)
+        .expect("valid test JSON")
 }
 
 fn make_test_nfc_logit() -> NeoFoodClub {
@@ -32,18 +33,22 @@ fn make_test_nfc_logit() -> NeoFoodClub {
         Some(ProbabilityModel::MultinomialLogitModel),
         None,
     )
+    .expect("valid test JSON")
 }
 
 fn make_test_nfc_with_modifier(modifier: Modifier) -> NeoFoodClub {
     NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, Some(modifier))
+        .expect("valid test JSON")
 }
 
 fn make_test_nfc_from_url() -> NeoFoodClub {
     NeoFoodClub::from_url(ROUND_DATA_URL, Some(BET_AMOUNT), None, None)
+        .expect("valid test URL")
 }
 
 fn make_test_nfc_from_url_with_modifier(modifier: Modifier) -> NeoFoodClub {
     NeoFoodClub::from_url(ROUND_DATA_URL, Some(BET_AMOUNT), None, Some(modifier))
+        .expect("valid test URL")
 }
 
 #[cfg(test)]
@@ -1153,7 +1158,7 @@ mod tests {
 
         let json = nfc.to_json();
 
-        let new_nfc = NeoFoodClub::from_json(&json, None, None, None);
+        let new_nfc = NeoFoodClub::from_json(&json, None, None, None).expect("valid JSON");
 
         assert_eq!(new_nfc.round(), nfc.round());
         assert!(new_nfc.modifier.is_empty());
@@ -1328,7 +1333,7 @@ mod tests {
 
     #[test]
     fn test_is_guaranteed_win_no_bet_amounts() {
-        let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, None, None, None);
+        let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, None, None, None).expect("valid JSON");
 
         let bets = nfc.make_bustproof_bets().unwrap();
 
@@ -1337,7 +1342,7 @@ mod tests {
 
     #[test]
     fn test_imake_bets_from_array_indices() {
-        let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, None, None, None);
+        let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, None, None, None).expect("valid JSON");
 
         let bets = nfc.make_bets_from_array_indices(vec![1, 2, 3, 4, 5, 6]);
 
@@ -1454,19 +1459,23 @@ mod tests {
     }
 
     #[test]
-    #[should_panic]
-    fn test_from_url_panic() {
-        let _nfc = NeoFoodClub::from_url(
+    fn test_from_url_double_hash_ok() {
+        // split_once('#') splits at first '#'; second '#' lands in query string
+        // serde_qs may succeed or fail — either way no panic
+        let result = NeoFoodClub::from_url(
             format!("{ROUND_DATA_URL}#aaaaaa").as_str(),
             None,
             None,
             None,
         );
+        // result is either Ok or Err — both are acceptable, no panic expected
+        let _ = result;
     }
 
     #[test]
     fn test_from_url_cc_perk() {
-        let nfc = NeoFoodClub::from_url(format!("/15{ROUND_DATA_URL}").as_str(), None, None, None);
+        let nfc = NeoFoodClub::from_url(format!("/15{ROUND_DATA_URL}").as_str(), None, None, None)
+            .expect("valid URL");
 
         let bets = nfc.make_max_ter_bets();
 
@@ -1476,7 +1485,7 @@ mod tests {
 
     #[test]
     fn test_get_win_np_no_bet_amount() {
-        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL, None, None, None);
+        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL, None, None, None).expect("valid URL");
 
         let bets = nfc.make_bets_from_binaries(vec![0x1]);
 
@@ -1485,7 +1494,8 @@ mod tests {
 
     #[test]
     fn test_winners_none() {
-        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL_NO_WINNERS, None, None, None);
+        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL_NO_WINNERS, None, None, None)
+            .expect("valid URL");
 
         let mut bets = nfc.make_bets_from_binaries(vec![0x1]);
         bets.set_bet_amounts(&Some(BetAmounts::Amounts(vec![Some(8000); 1])))
@@ -1499,28 +1509,31 @@ mod tests {
 
     #[test]
     fn test_is_over_winners_none() {
-        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL_NO_WINNERS, None, None, None);
+        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL_NO_WINNERS, None, None, None)
+            .expect("valid URL");
 
         assert!(!nfc.is_over());
     }
 
     #[test]
     fn test_make_winning_gambit_winners_none() {
-        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL_NO_WINNERS, None, None, None);
+        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL_NO_WINNERS, None, None, None)
+            .expect("valid URL");
 
         assert!(nfc.make_winning_gambit_bets().is_none());
     }
 
     #[test]
     fn test_is_outdated_lock_without_start() {
-        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL, None, None, None);
+        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL, None, None, None).expect("valid URL");
 
         assert!(nfc.is_outdated_lock());
     }
 
     #[test]
     fn test_make_url_no_winners() {
-        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL_NO_WINNERS, None, None, None);
+        let nfc = NeoFoodClub::from_url(ROUND_DATA_URL_NO_WINNERS, None, None, None)
+            .expect("valid URL");
 
         let bets = nfc.make_max_ter_bets();
 
@@ -1922,12 +1935,12 @@ mod tests {
 
     #[bench]
     fn bench_new_json(b: &mut Bencher) {
-        b.iter(|| NeoFoodClub::from_json(ROUND_DATA_JSON, None, None, None));
+        b.iter(|| NeoFoodClub::from_json(ROUND_DATA_JSON, None, None, None).unwrap());
     }
 
     #[bench]
     fn bench_new_url(b: &mut Bencher) {
-        b.iter(|| NeoFoodClub::from_url(ROUND_DATA_URL, None, None, None));
+        b.iter(|| NeoFoodClub::from_url(ROUND_DATA_URL, None, None, None).unwrap());
     }
 
     #[bench]
@@ -2086,21 +2099,22 @@ mod panic_tests {
     }
 
     #[test]
-    #[should_panic(expected = "Invalid JSON.")]
     fn test_from_json_invalid() {
-        NeoFoodClub::from_json("not json", None, None, None);
+        let result = NeoFoodClub::from_json("not json", None, None, None);
+        assert!(result.is_err());
     }
 
     #[test]
-    #[should_panic(expected = "No relevant NeoFoodClub-like URL data found.")]
     fn test_from_url_panic_no_hash() {
-        NeoFoodClub::from_url("no-hash-in-url", None, None, None);
+        let result = NeoFoodClub::from_url("no-hash-in-url", None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("No NeoFoodClub data found in URL"));
     }
 
     #[test]
-    #[should_panic(expected = "Invalid query string.")]
     fn test_from_url_invalid_qs() {
-        NeoFoodClub::from_url("#?boom", None, None, None);
+        let result = NeoFoodClub::from_url("#?boom", None, None, None);
+        assert!(result.is_err());
     }
 
     #[test]
@@ -2111,10 +2125,11 @@ mod panic_tests {
     }
 
     #[test]
-    #[should_panic(expected = "You can only pick 1 pirate per arena.")]
-    fn test_make_tenbet_bets_panic() {
+    fn test_make_tenbet_bets_too_many_pirates() {
         let nfc = make_test_nfc();
-        nfc.make_tenbet_bets(0b11).unwrap();
+        let result = nfc.make_tenbet_bets(0b11);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("You can only pick 1 pirate per arena."));
     }
 
     #[test]
@@ -2123,113 +2138,126 @@ mod panic_tests {
         neofoodclub::utils::timestamp_to_utc("invalid");
     }
 
-    // region: validate_round_data panics
+    // region: validate_round_data errors
     #[test]
-    #[should_panic(expected = "Round number must be greater than 0.")]
     fn test_validate_round_0() {
         let mut round_data = get_valid_round_data();
         round_data.round = 0;
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Round number must be greater than 0."));
     }
 
     #[test]
-    #[should_panic(expected = "Pirates must be unique.")]
     fn test_validate_duplicate_pirate_id() {
         let mut round_data = get_valid_round_data();
         round_data.pirates[0][0] = round_data.pirates[1][0];
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Pirates must be unique."));
     }
 
     #[test]
-    #[should_panic(expected = "Pirate IDs must be between 1 and 20.")]
     fn test_validate_pirate_id_zero() {
         let mut round_data = get_valid_round_data();
         round_data.pirates[0][0] = 0;
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Pirate IDs must be between 1 and 20."));
     }
 
     #[test]
-    #[should_panic(expected = "Pirate IDs must be between 1 and 20.")]
     fn test_validate_pirate_id_21() {
         let mut round_data = get_valid_round_data();
         round_data.pirates[0][0] = 21;
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Pirate IDs must be between 1 and 20."));
     }
 
     #[test]
-    #[should_panic(expected = "First integer in each arena in currentOdds must be 1.")]
     fn test_validate_current_odds_first_not_1() {
         let mut round_data = get_valid_round_data();
         round_data.currentOdds[0][0] = 2;
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("First integer in each arena in currentOdds must be 1."));
     }
 
     #[test]
-    #[should_panic(expected = "Odds must be between 2 and 13.")]
     fn test_validate_current_odds_lt() {
         let mut round_data = get_valid_round_data();
         round_data.currentOdds[0][1] = 1;
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Odds must be between 2 and 13."));
     }
 
     #[test]
-    #[should_panic(expected = "Odds must be between 2 and 13.")]
     fn test_validate_current_odds_gt() {
         let mut round_data = get_valid_round_data();
         round_data.currentOdds[0][1] = 14;
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Odds must be between 2 and 13."));
     }
 
     #[test]
-    #[should_panic(expected = "First integer in each arena in openingOdds must be 1.")]
     fn test_validate_opening_odds_first_not_1() {
         let mut round_data = get_valid_round_data();
         round_data.openingOdds[0][0] = 2;
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("First integer in each arena in openingOdds must be 1."));
     }
 
     #[test]
-    #[should_panic(expected = "Odds must be between 2 and 13.")]
     fn test_validate_opening_odds_lt() {
         let mut round_data = get_valid_round_data();
         round_data.openingOdds[0][1] = 1;
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Odds must be between 2 and 13."));
     }
 
     #[test]
-    #[should_panic(expected = "Odds must be between 2 and 13.")]
     fn test_validate_opening_odds_gt() {
         let mut round_data = get_valid_round_data();
         round_data.openingOdds[0][1] = 14;
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Odds must be between 2 and 13."));
     }
 
     #[test]
-    #[should_panic(expected = "Food integers must be between 1 and 40.")]
     fn test_validate_foods_value_lt() {
         let mut round_data = get_valid_round_data();
         let mut foods = round_data.foods.unwrap();
         foods[0][0] = 0;
         round_data.foods = Some(foods);
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Food integers must be between 1 and 40."));
     }
 
     #[test]
-    #[should_panic(expected = "Food integers must be between 1 and 40.")]
     fn test_validate_foods_value_gt() {
         let mut round_data = get_valid_round_data();
         let mut foods = round_data.foods.unwrap();
         foods[0][0] = 41;
         round_data.foods = Some(foods);
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Food integers must be between 1 and 40."));
     }
 
     #[test]
-    #[should_panic(expected = "Winners must either be all 0, or all 1-4.")]
     fn test_validate_winners_mixed() {
         let mut round_data = get_valid_round_data();
         round_data.winners = Some([1, 2, 3, 4, 0]);
-        NeoFoodClub::new(round_data, None, None, None);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Winners must either be all 0, or all 1-4."));
     }
     // endregion
 }

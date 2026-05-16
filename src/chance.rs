@@ -1,5 +1,5 @@
 /// A struct to represent the likelihood of earning \<value\> units
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Chance {
     pub value: u32,
     pub probability: f64,

@@ -150,22 +150,28 @@ fn bench_build_chance_objects() {
 
 #[divan::bench]
 fn bench_nfc_from_json() {
-    divan::black_box(NeoFoodClub::from_json(
-        divan::black_box(ROUND_DATA_JSON),
-        Some(BET_AMOUNT),
-        None,
-        None,
-    ));
+    divan::black_box(
+        NeoFoodClub::from_json(
+            divan::black_box(ROUND_DATA_JSON),
+            Some(BET_AMOUNT),
+            None,
+            None,
+        )
+        .unwrap(),
+    );
 }
 
 #[divan::bench]
 fn bench_nfc_from_url() {
-    divan::black_box(NeoFoodClub::from_url(
-        divan::black_box(ROUND_DATA_URL),
-        Some(BET_AMOUNT),
-        None,
-        None,
-    ));
+    divan::black_box(
+        NeoFoodClub::from_url(
+            divan::black_box(ROUND_DATA_URL),
+            Some(BET_AMOUNT),
+            None,
+            None,
+        )
+        .unwrap(),
+    );
 }
 
 #[divan::bench]
@@ -181,7 +187,8 @@ fn bench_nfc_probabilities_logit() {
         Some(BET_AMOUNT),
         Some(ProbabilityModel::MultinomialLogitModel),
         None,
-    ).unwrap();
+    )
+    .unwrap();
     divan::black_box(nfc.probabilities());
 }
 

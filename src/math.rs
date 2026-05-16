@@ -83,6 +83,17 @@ pub fn binary_to_indices(binary: u32) -> [u8; 5] {
     ]
 }
 
+/// Returns the index of `binary` in the [`RoundDictData`] vecs.
+///
+/// The vecs are built by iterating arenas in a fixed nested order (0..5 each),
+/// so the position is determined by base-5 arithmetic on the decoded pirate indices.
+/// `binary` must be a valid non-zero bet binary.
+#[inline]
+pub fn binary_to_index(binary: u32) -> usize {
+    let [a, b, c, d, e] = binary_to_indices(binary);
+    a as usize * 625 + b as usize * 125 + c as usize * 25 + d as usize * 5 + e as usize - 1
+}
+
 #[inline]
 pub fn bets_hash_check(bets_hash: &str) -> Result<(), String> {
     if !bets_hash
@@ -421,8 +432,6 @@ pub struct RoundDictData {
     pub odds: Vec<u32>,
     pub ers: Vec<f64>,
     pub maxbets: Vec<u32>,
-    /// Maps binary representation to index in the above vecs. O(1) lookup.
-    pub bin_index: HashMap<u32, usize>,
 }
 
 pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictData {
@@ -431,7 +440,6 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
     let mut odds_vec: Vec<u32> = Vec::with_capacity(3124);
     let mut ers: Vec<f64> = Vec::with_capacity(3124);
     let mut maxbets: Vec<u32> = Vec::with_capacity(3124);
-    let mut bin_index: HashMap<u32, usize> = HashMap::with_capacity(3124);
 
     for a in 0..5 {
         for b in 0..5 {
@@ -462,8 +470,6 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
                         let er = total_probs * total_odds as f64;
                         let maxbet = (1_000_000.0 / total_odds as f64).ceil() as u32;
 
-                        let idx = bins.len();
-                        bin_index.insert(total_bin, idx);
                         bins.push(total_bin);
                         probs.push(total_probs);
                         odds_vec.push(total_odds);
@@ -481,7 +487,6 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
         odds: odds_vec,
         ers,
         maxbets,
-        bin_index,
     }
 }
 

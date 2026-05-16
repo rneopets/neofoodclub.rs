@@ -4,7 +4,8 @@ use crate::{
     arena::ARENA_NAMES,
     math::{
         amounts_hash_to_bet_amounts, bet_amounts_to_amounts_hash, bets_hash_to_bet_binaries,
-        bets_hash_value, binary_to_indices, pirates_binary, BET_AMOUNT_MAX, BET_AMOUNT_MIN,
+        bets_hash_value, binary_to_index, binary_to_indices, pirates_binary, BET_AMOUNT_MAX,
+        BET_AMOUNT_MIN,
     },
     nfc::NeoFoodClub,
     odds::Odds,
@@ -223,10 +224,10 @@ impl Bets {
 
     /// Creates a new Bets struct from a list of binaries
     pub fn from_binaries(nfc: &NeoFoodClub, binaries: Vec<u32>) -> Self {
-        let data = nfc.round_dict_data();
         let bin_indices: Vec<usize> = binaries
             .iter()
-            .filter_map(|b| data.bin_index.get(b).copied())
+            .filter(|&&b| b != 0)
+            .map(|b| binary_to_index(*b))
             .collect();
 
         Self::new(nfc, bin_indices)
@@ -435,7 +436,7 @@ impl Bets {
         {
             let mut row = vec![(bet_index + 1).to_string()];
 
-            let bin_index = *data.bin_index.get(bet_binary).unwrap();
+            let bin_index = binary_to_index(*bet_binary);
 
             let hex = format!("0x{bet_binary:0>5X}");
 

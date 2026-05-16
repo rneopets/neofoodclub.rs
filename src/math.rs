@@ -28,10 +28,9 @@ const CONVERT_PIR_IB: [u32; 5] = [0xFFFFF, 0x88888, 0x44444, 0x22222, 0x11111];
 /// ```
 #[inline]
 pub fn pirate_binary(index: u8, arena: u8) -> u32 {
-    match index {
-        1..=4 => 0x80000 >> ((index - 1) + arena * 4),
-        _ => 0,
-    }
+    let mask = (index != 0) as u32 * u32::MAX;
+    let shift = (index.wrapping_sub(1) as u32 + arena as u32 * 4) & 31;
+    (0x80000u32 >> shift) & mask
 }
 
 /// ```

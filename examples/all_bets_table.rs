@@ -12,8 +12,7 @@ const ROUND_DATA_URL: &str = r#"/#round=7956&pirates=[[2,8,14,11],[20,7,6,10],[1
 const BET_AMOUNT: u32 = 8000;
 
 fn make_nfc() -> NeoFoodClub {
-    NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None)
-        .expect("valid test JSON")
+    NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).expect("valid test JSON")
     // NeoFoodClub::from_url(ROUND_DATA_URL, Some(BET_AMOUNT), None, None)
     //     .expect("valid test URL")
 }

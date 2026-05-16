@@ -448,10 +448,7 @@ impl Bets {
                 row.push(format!("{:.2}", nes[bet_index]));
             }
 
-            row.extend(vec![
-                data.maxbets[bin_index].to_string(),
-                hex,
-            ]);
+            row.extend(vec![data.maxbets[bin_index].to_string(), hex]);
 
             for (arena_index, pirate_index) in bet_indices.iter().enumerate() {
                 if pirate_index == &0 {

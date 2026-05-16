@@ -184,9 +184,7 @@ impl NeoFoodClub {
         model: Option<ProbabilityModel>,
         modifier: Option<Modifier>,
     ) -> Result<NeoFoodClub, NfcError> {
-        let (base, query) = url
-            .split_once('#')
-            .ok_or(NfcError::InvalidUrl)?;
+        let (base, query) = url.split_once('#').ok_or(NfcError::InvalidUrl)?;
 
         let use_modifier = modifier.unwrap_or_default();
         let cc_perk = base.ends_with("/15/") || use_modifier.is_charity_corner();
@@ -202,24 +200,18 @@ impl NeoFoodClub {
         )
         .map_err(NfcError::Modifier)?;
 
-        let temp: RoundDataRaw = serde_qs::from_str(query)
-            .map_err(|e| NfcError::QueryString(e.to_string()))?;
+        let temp: RoundDataRaw =
+            serde_qs::from_str(query).map_err(|e| NfcError::QueryString(e.to_string()))?;
 
         let round_data = RoundData {
-            foods: temp
-                .foods
-                .map(|x| serde_json::from_str(&x))
-                .transpose()?,
+            foods: temp.foods.map(|x| serde_json::from_str(&x)).transpose()?,
             round: temp.round,
             start: temp.start,
             pirates: serde_json::from_str(&temp.pirates)?,
             openingOdds: serde_json::from_str(&temp.openingOdds)?,
             currentOdds: serde_json::from_str(&temp.currentOdds)?,
             customOdds: None,
-            winners: temp
-                .winners
-                .map(|x| serde_json::from_str(&x))
-                .transpose()?,
+            winners: temp.winners.map(|x| serde_json::from_str(&x)).transpose()?,
             timestamp: temp.timestamp,
             changes: None,
             lastChange: temp.lastChange,

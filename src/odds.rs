@@ -35,7 +35,8 @@ impl Odds {
 
     /// The Chance object with the highest probability.
     pub fn most_likely_winner(&self) -> Chance {
-        *self.chances
+        *self
+            .chances
             .iter()
             .filter(|c| c.value > 0)
             .max_by(|a, b| a.probability.total_cmp(&b.probability))
@@ -44,7 +45,8 @@ impl Odds {
 
     /// The Chance object with the highest odds value.
     pub fn best(&self) -> Chance {
-        *self.chances
+        *self
+            .chances
             .last()
             .expect("Chances vector should not be empty")
     }

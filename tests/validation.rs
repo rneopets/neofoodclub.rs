@@ -41,7 +41,10 @@ fn test_round_zero() {
     data.round = 0;
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Round number must be greater than 0."));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Round number must be greater than 0."));
 }
 
 #[test]
@@ -50,7 +53,10 @@ fn test_duplicate_pirates() {
     data.pirates[0][0] = 5;
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Pirates must be unique."));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Pirates must be unique."));
 }
 
 #[test]
@@ -59,7 +65,10 @@ fn test_invalid_pirate_id() {
     data.pirates[0][0] = 21;
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Pirate IDs must be between 1 and 20."));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Pirate IDs must be between 1 and 20."));
 }
 
 #[test]
@@ -68,7 +77,10 @@ fn test_current_odds_first_element_not_1() {
     data.currentOdds[0][0] = 2;
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("First integer in each arena in currentOdds must be 1."));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("First integer in each arena in currentOdds must be 1."));
 }
 
 #[test]
@@ -77,7 +89,10 @@ fn test_current_odds_out_of_range() {
     data.currentOdds[0][1] = 14;
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Odds must be between 2 and 13."));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Odds must be between 2 and 13."));
 }
 
 #[test]
@@ -86,7 +101,10 @@ fn test_opening_odds_first_element_not_1() {
     data.openingOdds[0][0] = 2;
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("First integer in each arena in openingOdds must be 1."));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("First integer in each arena in openingOdds must be 1."));
 }
 
 #[test]
@@ -95,7 +113,10 @@ fn test_opening_odds_out_of_range() {
     data.openingOdds[0][1] = 1;
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Odds must be between 2 and 13."));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Odds must be between 2 and 13."));
 }
 
 #[test]
@@ -104,7 +125,10 @@ fn test_invalid_food_id() {
     data.foods = Some([[41; 10]; 5]);
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Food integers must be between 1 and 40."));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Food integers must be between 1 and 40."));
 }
 
 #[test]
@@ -113,5 +137,8 @@ fn test_invalid_winners() {
     data.winners = Some([1, 2, 3, 4, 0]);
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("Winners must either be all 0, or all 1-4."));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("Winners must either be all 0, or all 1-4."));
 }

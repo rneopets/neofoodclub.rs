@@ -150,27 +150,33 @@ fn bench_build_chance_objects() {
 
 #[divan::bench]
 fn bench_nfc_from_json() {
-    divan::black_box(NeoFoodClub::from_json(
-        divan::black_box(ROUND_DATA_JSON),
-        Some(BET_AMOUNT),
-        None,
-        None,
-    ));
+    divan::black_box(
+        NeoFoodClub::from_json(
+            divan::black_box(ROUND_DATA_JSON),
+            Some(BET_AMOUNT),
+            None,
+            None,
+        )
+        .unwrap(),
+    );
 }
 
 #[divan::bench]
 fn bench_nfc_from_url() {
-    divan::black_box(NeoFoodClub::from_url(
-        divan::black_box(ROUND_DATA_URL),
-        Some(BET_AMOUNT),
-        None,
-        None,
-    ));
+    divan::black_box(
+        NeoFoodClub::from_url(
+            divan::black_box(ROUND_DATA_URL),
+            Some(BET_AMOUNT),
+            None,
+            None,
+        )
+        .unwrap(),
+    );
 }
 
 #[divan::bench]
 fn bench_nfc_probabilities() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.probabilities());
 }
 
@@ -181,25 +187,26 @@ fn bench_nfc_probabilities_logit() {
         Some(BET_AMOUNT),
         Some(ProbabilityModel::MultinomialLogitModel),
         None,
-    );
+    )
+    .unwrap();
     divan::black_box(nfc.probabilities());
 }
 
 #[divan::bench]
 fn bench_nfc_round_dict_data() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.round_dict_data());
 }
 
 #[divan::bench]
 fn bench_nfc_get_arenas() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.get_arenas());
 }
 
 #[divan::bench]
 fn bench_nfc_get_arenas_positives() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.get_arenas().positives());
 }
 
@@ -207,79 +214,79 @@ fn bench_nfc_get_arenas_positives() {
 
 #[divan::bench]
 fn bench_make_max_ter_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_max_ter_bets());
 }
 
 #[divan::bench]
 fn bench_make_bustproof_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_bustproof_bets());
 }
 
 #[divan::bench]
 fn bench_make_best_gambit_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_best_gambit_bets());
 }
 
 #[divan::bench]
 fn bench_make_gambit_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_gambit_bets(divan::black_box(0x12481)));
 }
 
 #[divan::bench]
 fn bench_make_random_gambit_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_random_gambit_bets());
 }
 
 #[divan::bench]
 fn bench_make_winning_gambit_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_winning_gambit_bets());
 }
 
 #[divan::bench]
 fn bench_make_random_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_random_bets());
 }
 
 #[divan::bench]
 fn bench_make_crazy_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_crazy_bets());
 }
 
 #[divan::bench]
 fn bench_make_all_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_all_bets());
 }
 
 #[divan::bench]
 fn bench_make_all_max_ter_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_all_max_ter_bets());
 }
 
 #[divan::bench]
 fn bench_make_tenbet_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_tenbet_bets(divan::black_box(0x88800)).unwrap());
 }
 
 #[divan::bench]
 fn bench_make_units_bets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(nfc.make_units_bets(divan::black_box(20)));
 }
 
 #[divan::bench]
 fn bench_make_bets_from_hash() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     divan::black_box(
         nfc.make_bets_from_hash(divan::black_box("ltqvqwgimhqtvrnywrwvijwnn"))
             .unwrap(),
@@ -288,14 +295,14 @@ fn bench_make_bets_from_hash() {
 
 #[divan::bench]
 fn bench_make_bets_from_binaries() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let binaries = vec![0x80000, 0x8000, 0x800, 0x80, 0x8];
     divan::black_box(nfc.make_bets_from_binaries(divan::black_box(binaries)));
 }
 
 #[divan::bench]
 fn bench_make_bets_from_indices() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let indices = vec![[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0]];
     divan::black_box(nfc.make_bets_from_indices(divan::black_box(indices)));
 }
@@ -304,35 +311,35 @@ fn bench_make_bets_from_indices() {
 
 #[divan::bench]
 fn bench_get_win_units() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_max_ter_bets();
     divan::black_box(nfc.get_win_units(divan::black_box(&bets)));
 }
 
 #[divan::bench]
 fn bench_get_win_np() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_max_ter_bets();
     divan::black_box(nfc.get_win_np(divan::black_box(&bets)));
 }
 
 #[divan::bench]
 fn bench_expected_return() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_max_ter_bets();
     divan::black_box(bets.expected_return(divan::black_box(&nfc)));
 }
 
 #[divan::bench]
 fn bench_net_expected() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_max_ter_bets();
     divan::black_box(bets.net_expected(divan::black_box(&nfc)));
 }
 
 #[divan::bench]
 fn bench_fill_bet_amounts() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let mut bets = nfc.make_all_bets();
     bets.bet_amounts = None;
     bets.fill_bet_amounts(divan::black_box(&nfc));
@@ -343,42 +350,42 @@ fn bench_fill_bet_amounts() {
 
 #[divan::bench]
 fn bench_is_bustproof() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_bustproof_bets().unwrap();
     divan::black_box(bets.is_bustproof());
 }
 
 #[divan::bench]
 fn bench_is_gambit() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_best_gambit_bets();
     divan::black_box(bets.is_gambit());
 }
 
 #[divan::bench]
 fn bench_is_crazy() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_crazy_bets();
     divan::black_box(bets.is_crazy());
 }
 
 #[divan::bench]
 fn bench_is_tenbet() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_tenbet_bets(0x88800).unwrap();
     divan::black_box(bets.is_tenbet());
 }
 
 #[divan::bench]
 fn bench_is_guaranteed_win() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_bustproof_bets().unwrap();
     divan::black_box(bets.is_guaranteed_win(divan::black_box(&nfc)));
 }
 
 #[divan::bench]
 fn bench_count_tenbets() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_tenbet_bets(0x88800).unwrap();
     divan::black_box(bets.count_tenbets());
 }
@@ -387,7 +394,7 @@ fn bench_count_tenbets() {
 
 #[divan::bench]
 fn bench_make_url() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_max_ter_bets();
     divan::black_box(nfc.make_url(
         Some(divan::black_box(&bets)),
@@ -398,14 +405,14 @@ fn bench_make_url() {
 
 #[divan::bench]
 fn bench_bets_hash() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_max_ter_bets();
     divan::black_box(bets.bets_hash());
 }
 
 #[divan::bench]
 fn bench_amounts_hash() {
-    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_max_ter_bets();
     divan::black_box(bets.amounts_hash());
 }
@@ -414,21 +421,21 @@ fn bench_amounts_hash() {
 
 #[divan::bench]
 fn bench_nfc_with_modifier_reverse() {
-    let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let modifier = Modifier::new(ModifierFlags::REVERSE.bits(), None, None).unwrap();
     divan::black_box(nfc.with_modifier(divan::black_box(modifier)));
 }
 
 #[divan::bench]
 fn bench_nfc_with_modifier_opening_odds() {
-    let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let modifier = Modifier::new(ModifierFlags::OPENING_ODDS.bits(), None, None).unwrap();
     divan::black_box(nfc.with_modifier(divan::black_box(modifier)));
 }
 
 #[divan::bench]
 fn bench_nfc_with_modifier_charity_corner() {
-    let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None);
+    let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let modifier = Modifier::new(ModifierFlags::CHARITY_CORNER.bits(), None, None).unwrap();
     divan::black_box(nfc.with_modifier(divan::black_box(modifier)));
 }

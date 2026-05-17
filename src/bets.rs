@@ -4,7 +4,8 @@ use crate::{
     arena::ARENA_NAMES,
     math::{
         amounts_hash_to_bet_amounts, bet_amounts_to_amounts_hash, bets_hash_to_bet_binaries,
-        bets_hash_value, binary_to_indices, pirates_binary, BET_AMOUNT_MAX, BET_AMOUNT_MIN,
+        bets_hash_value, binary_to_index, binary_to_indices, pirates_binary, BET_AMOUNT_MAX,
+        BET_AMOUNT_MIN,
     },
     nfc::NeoFoodClub,
     odds::Odds,
@@ -223,10 +224,10 @@ impl Bets {
 
     /// Creates a new Bets struct from a list of binaries
     pub fn from_binaries(nfc: &NeoFoodClub, binaries: Vec<u32>) -> Self {
-        // maintaining the order of the binaries is important, at the cost of some performance
         let bin_indices: Vec<usize> = binaries
             .iter()
-            .filter_map(|b| nfc.round_dict_data().bins.iter().position(|bin| bin == b))
+            .filter(|&&b| b != 0)
+            .map(|b| binary_to_index(*b))
             .collect();
 
         Self::new(nfc, bin_indices)
@@ -266,8 +267,8 @@ impl Bets {
     }
 
     /// Returns the bet binaries
-    pub fn get_binaries(&self) -> Vec<u32> {
-        self.bet_binaries.to_vec()
+    pub fn get_binaries(&self) -> &[u32] {
+        &self.bet_binaries
     }
 
     /// Returns a string of the hash of the bets
@@ -425,6 +426,8 @@ impl Bets {
 
         let arenas = nfc.get_arenas();
 
+        let data = nfc.round_dict_data();
+
         for (bet_index, (bet_binary, bet_indices)) in self
             .get_binaries()
             .iter()
@@ -433,28 +436,20 @@ impl Bets {
         {
             let mut row = vec![(bet_index + 1).to_string()];
 
-            let bin_index = nfc
-                .round_dict_data()
-                .bins
-                .iter()
-                .position(|&r| r == *bet_binary)
-                .unwrap();
+            let bin_index = binary_to_index(*bet_binary);
 
             let hex = format!("0x{bet_binary:0>5X}");
 
             row.extend(vec![
-                nfc.round_dict_data().odds[bin_index].to_string(),
-                format!("{:.3}:1", nfc.round_dict_data().ers[bin_index]),
+                data.odds[bin_index].to_string(),
+                format!("{:.3}:1", data.ers[bin_index]),
             ]);
 
             if !nes.is_empty() {
                 row.push(format!("{:.2}", nes[bet_index]));
             }
 
-            row.extend(vec![
-                nfc.round_dict_data().maxbets[bin_index].to_string(),
-                hex,
-            ]);
+            row.extend(vec![data.maxbets[bin_index].to_string(), hex]);
 
             for (arena_index, pirate_index) in bet_indices.iter().enumerate() {
                 if pirate_index == &0 {

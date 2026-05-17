@@ -3,6 +3,7 @@ use std::collections::HashSet;
 
 use crate::arena::Arenas;
 use crate::bets::Bets;
+use crate::error::NfcError;
 use crate::math::{
     make_round_dicts, pirates_binary, random_full_pirates_binary, RoundDictData, BET_AMOUNT_MAX,
     BET_AMOUNT_MIN, BIT_MASKS,
@@ -36,7 +37,7 @@ struct UrlAllDataParams<'a> {
 
 #[allow(non_snake_case)]
 #[derive(Debug, Deserialize)]
-pub struct RoundDataRaw {
+pub(crate) struct RoundDataRaw {
     // as an intermediate step, we use this struct to deserialize the JSON
     foods: Option<String>,
     round: u16,
@@ -81,8 +82,8 @@ impl NeoFoodClub {
         bet_amount: Option<u32>,
         model: Option<ProbabilityModel>,
         modifier: Option<Modifier>,
-    ) -> NeoFoodClub {
-        validate_round_data(&round_data);
+    ) -> Result<NeoFoodClub, NfcError> {
+        validate_round_data(&round_data)?;
 
         let use_modifier = modifier.unwrap_or_default();
 
@@ -103,7 +104,7 @@ impl NeoFoodClub {
 
         nfc.set_bet_amount(bet_amount);
 
-        nfc
+        Ok(nfc)
     }
 
     /// Sets the bet amount
@@ -146,7 +147,7 @@ impl NeoFoodClub {
 
     /// changes the modifier of this NeoFoodClub object
     /// if the modifier is different enough, we clear the caches
-    pub fn with_modifier(&mut self, modifier: Modifier) -> &NeoFoodClub {
+    pub fn with_modifier(&mut self, modifier: Modifier) -> &mut Self {
         let current_modifier = &self.modifier;
 
         if self.modified()
@@ -171,9 +172,8 @@ impl NeoFoodClub {
         bet_amount: Option<u32>,
         model: Option<ProbabilityModel>,
         modifier: Option<Modifier>,
-    ) -> NeoFoodClub {
-        let round_data: RoundData = serde_json::from_str(json).expect("Invalid JSON.");
-
+    ) -> Result<NeoFoodClub, NfcError> {
+        let round_data: RoundData = serde_json::from_str(json)?;
         NeoFoodClub::new(round_data, bet_amount, model, modifier)
     }
 
@@ -183,15 +183,11 @@ impl NeoFoodClub {
         bet_amount: Option<u32>,
         model: Option<ProbabilityModel>,
         modifier: Option<Modifier>,
-    ) -> NeoFoodClub {
-        let parts = url.split('#').collect::<Vec<&str>>();
-
-        if parts.len() != 2 {
-            panic!("No relevant NeoFoodClub-like URL data found.");
-        }
+    ) -> Result<NeoFoodClub, NfcError> {
+        let (base, query) = url.split_once('#').ok_or(NfcError::InvalidUrl)?;
 
         let use_modifier = modifier.unwrap_or_default();
-        let cc_perk = parts[0].ends_with("/15/") || use_modifier.is_charity_corner();
+        let cc_perk = base.ends_with("/15/") || use_modifier.is_charity_corner();
         let new_modifier = Modifier::new(
             use_modifier.value
                 | if cc_perk {
@@ -202,25 +198,20 @@ impl NeoFoodClub {
             use_modifier.custom_odds,
             use_modifier.custom_time,
         )
-        .expect("Invalid modifier parameters");
+        .map_err(NfcError::Modifier)?;
 
-        let temp: RoundDataRaw = serde_qs::from_str(parts[1]).expect("Invalid query string.");
+        let temp: RoundDataRaw =
+            serde_qs::from_str(query).map_err(|e| NfcError::QueryString(e.to_string()))?;
 
         let round_data = RoundData {
-            foods: temp
-                .foods
-                .map(|x| serde_json::from_str(&x).expect("Invalid foods JSON.")),
+            foods: temp.foods.map(|x| serde_json::from_str(&x)).transpose()?,
             round: temp.round,
             start: temp.start,
-            pirates: serde_json::from_str(&temp.pirates).expect("Invalid pirates JSON."),
-            openingOdds: serde_json::from_str(&temp.openingOdds)
-                .expect("Invalid openingOdds JSON."),
-            currentOdds: serde_json::from_str(&temp.currentOdds)
-                .expect("Invalid currentOdds JSON."),
+            pirates: serde_json::from_str(&temp.pirates)?,
+            openingOdds: serde_json::from_str(&temp.openingOdds)?,
+            currentOdds: serde_json::from_str(&temp.currentOdds)?,
             customOdds: None,
-            winners: temp
-                .winners
-                .map(|x| serde_json::from_str(&x).expect("Invalid winners JSON.")),
+            winners: temp.winners.map(|x| serde_json::from_str(&x)).transpose()?,
             timestamp: temp.timestamp,
             changes: None,
             lastChange: temp.lastChange,
@@ -482,7 +473,7 @@ impl NeoFoodClub {
         let data = self.round_dict_data();
         let probs = &data.probs;
 
-        let mut indices = argsort_slice_3124(probs, |a: &f64, b: &f64| a.partial_cmp(b).unwrap());
+        let mut indices = argsort_slice_3124(probs, |a: &f64, b: &f64| a.total_cmp(b));
 
         if descending {
             indices.reverse();
@@ -741,15 +732,16 @@ impl NeoFoodClub {
     /// Returns an error if the amount of pirates is greater than 3.
     /// Returns an error if the amount of pirates is less than 1.
     pub fn make_tenbet_bets(&self, pirates_binary: u32) -> Result<Bets, String> {
-        let amount_of_pirates = BIT_MASKS
+        for mask in BIT_MASKS.iter() {
+            if (pirates_binary & mask).count_ones() > 1 {
+                return Err("You can only pick 1 pirate per arena.".to_string());
+            }
+        }
+
+        let amount_of_pirates: u32 = BIT_MASKS
             .iter()
             .map(|mask| (pirates_binary & mask).count_ones())
-            .inspect(|&arena_pirates| {
-                if arena_pirates > 1 {
-                    panic!("You can only pick 1 pirate per arena.");
-                }
-            })
-            .sum::<u32>();
+            .sum();
 
         match amount_of_pirates {
             0 => return Err("You must pick at least 1 pirate, and at most 3.".to_string()),
@@ -934,12 +926,15 @@ impl NeoFoodClub {
         let mut round_data = self.round_data.clone();
         round_data.customOdds = None;
         NeoFoodClub::new(round_data, self.bet_amount, model, modifier)
+            .expect("copy of already-validated NeoFoodClub produced invalid data")
     }
 }
 
-fn validate_round_data(round_data: &RoundData) {
+fn validate_round_data(round_data: &RoundData) -> Result<(), NfcError> {
     if round_data.round == 0 {
-        panic!("Round number must be greater than 0.");
+        return Err(NfcError::RoundData(
+            "Round number must be greater than 0.".to_string(),
+        ));
     }
 
     let mut pirate_ids = Vec::<u8>::with_capacity(20);
@@ -947,10 +942,12 @@ fn validate_round_data(round_data: &RoundData) {
     for arena in round_data.pirates.iter() {
         for pirate in arena.iter() {
             if pirate_ids.contains(pirate) {
-                panic!("Pirates must be unique.");
+                return Err(NfcError::RoundData("Pirates must be unique.".to_string()));
             }
             if !(&1..=&20).contains(&pirate) {
-                panic!("Pirate IDs must be between 1 and 20.");
+                return Err(NfcError::RoundData(
+                    "Pirate IDs must be between 1 and 20.".to_string(),
+                ));
             }
             pirate_ids.push(*pirate);
         }
@@ -960,10 +957,14 @@ fn validate_round_data(round_data: &RoundData) {
         for (index, odds) in arena.iter().enumerate() {
             if index == 0 {
                 if *odds != 1 {
-                    panic!("First integer in each arena in currentOdds must be 1.");
+                    return Err(NfcError::RoundData(
+                        "First integer in each arena in currentOdds must be 1.".to_string(),
+                    ));
                 }
             } else if *odds < 2 || *odds > 13 {
-                panic!("Odds must be between 2 and 13.");
+                return Err(NfcError::RoundData(
+                    "Odds must be between 2 and 13.".to_string(),
+                ));
             }
         }
     }
@@ -972,10 +973,14 @@ fn validate_round_data(round_data: &RoundData) {
         for (index, odds) in arena.iter().enumerate() {
             if index == 0 {
                 if *odds != 1 {
-                    panic!("First integer in each arena in openingOdds must be 1.");
+                    return Err(NfcError::RoundData(
+                        "First integer in each arena in openingOdds must be 1.".to_string(),
+                    ));
                 }
             } else if *odds < 2 || *odds > 13 {
-                panic!("Odds must be between 2 and 13.");
+                return Err(NfcError::RoundData(
+                    "Odds must be between 2 and 13.".to_string(),
+                ));
             }
         }
     }
@@ -984,19 +989,24 @@ fn validate_round_data(round_data: &RoundData) {
         for arena in foods.iter() {
             for food in arena.iter() {
                 if *food < 1 || *food > 40 {
-                    panic!("Food integers must be between 1 and 40.");
+                    return Err(NfcError::RoundData(
+                        "Food integers must be between 1 and 40.".to_string(),
+                    ));
                 }
             }
         }
     }
 
     if let Some(winners) = &round_data.winners {
-        // the winners have to either be all 0, or all 1-4, let's check both
         let all_zero = winners.iter().all(|&x| x == 0);
         let all_one_to_four = winners.iter().all(|&x| (1..=4).contains(&x));
 
         if !(all_zero ^ all_one_to_four) {
-            panic!("Winners must either be all 0, or all 1-4.");
+            return Err(NfcError::RoundData(
+                "Winners must either be all 0, or all 1-4.".to_string(),
+            ));
         }
     }
+
+    Ok(())
 }

@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
+use itertools::Itertools;
 use rand::RngExt;
 
 use crate::chance::Chance;
@@ -27,10 +28,9 @@ const CONVERT_PIR_IB: [u32; 5] = [0xFFFFF, 0x88888, 0x44444, 0x22222, 0x11111];
 /// ```
 #[inline]
 pub fn pirate_binary(index: u8, arena: u8) -> u32 {
-    match index {
-        1..=4 => 0x80000 >> ((index - 1) + arena * 4),
-        _ => 0,
-    }
+    let mask = (index != 0) as u32 * u32::MAX;
+    let shift = (index.wrapping_sub(1) as u32 + arena as u32 * 4) & 31;
+    (0x80000u32 >> shift) & mask
 }
 
 /// ```
@@ -80,6 +80,17 @@ pub fn binary_to_indices(binary: u32) -> [u8; 5] {
         NIBBLE_TO_INDEX[((binary >> 4) & 0xF) as usize],
         NIBBLE_TO_INDEX[(binary & 0xF) as usize],
     ]
+}
+
+/// Returns the index of `binary` in the [`RoundDictData`] vecs.
+///
+/// The vecs are built by iterating arenas in a fixed nested order (0..5 each),
+/// so the position is determined by base-5 arithmetic on the decoded pirate indices.
+/// `binary` must be a valid non-zero bet binary.
+#[inline]
+pub fn binary_to_index(binary: u32) -> usize {
+    let [a, b, c, d, e] = binary_to_indices(binary);
+    a as usize * 625 + b as usize * 125 + c as usize * 25 + d as usize * 5 + e as usize - 1
 }
 
 #[inline]
@@ -226,7 +237,8 @@ pub fn bet_amounts_to_amounts_hash(bet_amounts: &[Option<u32>]) -> String {
         }
     }
 
-    // Safety: we only write ASCII [a-zA-Z] bytes.
+    // SAFETY: every byte written is a letter_index offset from b'a' or b'A',
+    // both of which are ASCII; the result vec contains only valid UTF-8.
     unsafe { String::from_utf8_unchecked(result) }
 }
 
@@ -317,15 +329,8 @@ pub fn bets_hash_value(bets_indices: Vec<[u8; 5]>) -> String {
         .into_iter()
         .flatten()
         .chain(std::iter::once(0).take(len & 1))
-        .collect::<Vec<u8>>()
-        .chunks_exact(2)
-        .map(|chunk| {
-            // char_index is the index of the character in the alphabet
-            // 0 = a, 1 = b, 2 = c, ..., 25 = z
-            let char_index = chunk[0] * 5 + chunk[1];
-            // b'a' is the byte literal for the ASCII "a", which is 97
-            (b'a' + char_index) as char
-        })
+        .tuples::<(u8, u8)>()
+        .map(|(a, b)| (b'a' + a * 5 + b) as char)
         .collect()
 }
 

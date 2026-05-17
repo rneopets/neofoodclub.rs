@@ -1,6 +1,7 @@
 pub mod arena;
 pub mod bets;
 pub mod chance;
+pub mod error;
 pub mod food_adjustments;
 pub mod math;
 pub mod models;

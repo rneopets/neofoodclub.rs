@@ -111,6 +111,8 @@ impl NeoFoodClub {
     pub fn set_bet_amount(&mut self, amount: Option<u32>) {
         self.bet_amount = amount.map(|x| x.clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX));
         self.clamped_max_bets = OnceCell::new();
+        self.net_expected_indices = OnceCell::new();
+        self.max_ter_indices = OnceCell::new();
     }
 
     /// Lazy loads the Arenas object.
@@ -156,6 +158,14 @@ impl NeoFoodClub {
                 || current_modifier.is_opening_odds() != modifier.is_opening_odds())
         {
             self.clear_caches();
+        } else if current_modifier.is_general() != modifier.is_general()
+            || current_modifier.is_reverse() != modifier.is_reverse()
+        {
+            // The GENERAL flag changes which ER values are used for sorting, and
+            // REVERSE changes sort direction. Neither invalidates the round data
+            // cache, but both invalidate the derived index caches.
+            self.net_expected_indices = OnceCell::new();
+            self.max_ter_indices = OnceCell::new();
         }
 
         self.round_data.customOdds = None;
@@ -443,19 +453,21 @@ impl NeoFoodClub {
     }
 
     /// Returns max-TER indices.
-    fn max_ter_indices(&self) -> Vec<usize> {
-        let use_ers = self.max_ters();
+    fn max_ter_indices(&self) -> &[usize] {
+        self.max_ter_indices.get_or_init(|| {
+            let use_ers = self.max_ters();
 
-        let mut indices = argsort_slice_3124(use_ers, |a: &f64, b: &f64| a.total_cmp(b));
+            let mut indices = argsort_slice_3124(use_ers, |a: &f64, b: &f64| a.total_cmp(b));
 
-        let reverse = self.modifier.is_reverse();
-        // since it's reversed to begin with, we reverse it if
-        // the modifier does not have the reverse flag
-        if !reverse {
-            indices.reverse();
-        }
+            let reverse = self.modifier.is_reverse();
+            // since it's reversed to begin with, we reverse it if
+            // the modifier does not have the reverse flag
+            if !reverse {
+                indices.reverse();
+            }
 
-        indices.to_vec()
+            indices.to_vec()
+        })
     }
 
     /// Returns sorted indices of odds
@@ -492,11 +504,12 @@ impl NeoFoodClub {
 
     /// Return the binary representation of the highest expected return full-arena bet.
     fn get_highest_er_full_bet(&self) -> u32 {
-        let max_ter_indices = self.max_ter_indices();
         let data = self.round_dict_data();
 
-        let index = max_ter_indices
-            .into_iter()
+        let index = self
+            .max_ter_indices()
+            .iter()
+            .copied()
             .find(|&index| data.bins[index].count_ones() == 5)
             .unwrap();
 

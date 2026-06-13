@@ -467,7 +467,7 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
                         );
 
                         let er = total_probs * total_odds as f64;
-                        let maxbet = (1_000_000u32 + total_odds - 1) / total_odds;
+                        let maxbet = 1_000_000u32.div_ceil(total_odds);
 
                         bins.push(total_bin);
                         probs.push(total_probs);

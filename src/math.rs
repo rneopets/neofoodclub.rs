@@ -440,28 +440,28 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
     let mut ers: Vec<f64> = Vec::with_capacity(3124);
     let mut maxbets: Vec<u32> = Vec::with_capacity(3124);
 
-    // stds[arena][0] == 1.0 and odds[arena][0] == 1 by construction (validated on input),
-    // so multiplying by index-0 values is always a no-op, no zero-checks needed.
     for a in 0..5usize {
+        let pa = stds[0][a];
+        let oa = odds[0][a] as u32;
+        let ba = pirate_binary(a as u8, 0);
         for b in 0..5usize {
+            let pab = pa * stds[1][b];
+            let oab = oa * odds[1][b] as u32;
+            let bab = ba | pirate_binary(b as u8, 1);
             for c in 0..5usize {
+                let pabc = pab * stds[2][c];
+                let oabc = oab * odds[2][c] as u32;
+                let babc = bab | pirate_binary(c as u8, 2);
                 for d in 0..5usize {
-                    for e in 0..5usize {
-                        if a == 0 && b == 0 && c == 0 && d == 0 && e == 0 {
-                            continue;
-                        }
-                        let total_probs =
-                            stds[0][a] * stds[1][b] * stds[2][c] * stds[3][d] * stds[4][e];
-                        let total_odds = odds[0][a] as u32
-                            * odds[1][b] as u32
-                            * odds[2][c] as u32
-                            * odds[3][d] as u32
-                            * odds[4][e] as u32;
-                        let total_bin = pirate_binary(a as u8, 0)
-                            | pirate_binary(b as u8, 1)
-                            | pirate_binary(c as u8, 2)
-                            | pirate_binary(d as u8, 3)
-                            | pirate_binary(e as u8, 4);
+                    let pabcd = pabc * stds[3][d];
+                    let oabcd = oabc * odds[3][d] as u32;
+                    let babcd = babc | pirate_binary(d as u8, 3);
+                    // skip (0,0,0,0,0): pirate_binary(0, arena)==0, so babcd==0 iff a=b=c=d=0
+                    let e_start = usize::from(babcd == 0);
+                    for e in e_start..5usize {
+                        let total_probs = pabcd * stds[4][e];
+                        let total_odds = oabcd * odds[4][e] as u32;
+                        let total_bin = babcd | pirate_binary(e as u8, 4);
                         let er = total_probs * total_odds as f64;
                         let maxbet = 1_000_000u32.div_ceil(total_odds);
                         bins.push(total_bin);

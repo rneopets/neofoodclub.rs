@@ -440,28 +440,32 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
     let mut ers: Vec<f64> = Vec::with_capacity(3124);
     let mut maxbets: Vec<u32> = Vec::with_capacity(3124);
 
+    let odds: [[u32; 5]; 5] = odds.map(|row| row.map(|v| v as u32));
+    let bin_table: [[u32; 5]; 5] =
+        std::array::from_fn(|arena| std::array::from_fn(|i| pirate_binary(i as u8, arena as u8)));
+
     for a in 0..5usize {
         let pa = stds[0][a];
-        let oa = odds[0][a] as u32;
-        let ba = pirate_binary(a as u8, 0);
+        let oa = odds[0][a];
+        let ba = bin_table[0][a];
         for b in 0..5usize {
             let pab = pa * stds[1][b];
-            let oab = oa * odds[1][b] as u32;
-            let bab = ba | pirate_binary(b as u8, 1);
+            let oab = oa * odds[1][b];
+            let bab = ba | bin_table[1][b];
             for c in 0..5usize {
                 let pabc = pab * stds[2][c];
-                let oabc = oab * odds[2][c] as u32;
-                let babc = bab | pirate_binary(c as u8, 2);
+                let oabc = oab * odds[2][c];
+                let babc = bab | bin_table[2][c];
                 for d in 0..5usize {
                     let pabcd = pabc * stds[3][d];
-                    let oabcd = oabc * odds[3][d] as u32;
-                    let babcd = babc | pirate_binary(d as u8, 3);
+                    let oabcd = oabc * odds[3][d];
+                    let babcd = babc | bin_table[3][d];
                     // skip (0,0,0,0,0): pirate_binary(0, arena)==0, so babcd==0 iff a=b=c=d=0
                     let e_start = usize::from(babcd == 0);
                     for e in e_start..5usize {
                         let total_probs = pabcd * stds[4][e];
-                        let total_odds = oabcd * odds[4][e] as u32;
-                        let total_bin = babcd | pirate_binary(e as u8, 4);
+                        let total_odds = oabcd * odds[4][e];
+                        let total_bin = babcd | bin_table[4][e];
                         let er = total_probs * total_odds as f64;
                         let maxbet = 1_000_000u32.div_ceil(total_odds);
                         bins.push(total_bin);

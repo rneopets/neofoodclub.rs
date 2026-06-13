@@ -442,10 +442,8 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
 
     // stds[arena][0] == 1.0 and odds[arena][0] == 1 by construction (validated on input),
     // so multiplying by index-0 values is always a no-op, no zero-checks needed.
-    for (a, b, c, d, e) in iproduct!(0..5usize, 0..5usize, 0..5usize, 0..5usize, 0..5usize) {
-        if a == 0 && b == 0 && c == 0 && d == 0 && e == 0 {
-            continue;
-        }
+    for (a, b, c, d, e) in iproduct!(0..5usize, 0..5usize, 0..5usize, 0..5usize, 0..5usize).skip(1)
+    {
         let total_probs = stds[0][a] * stds[1][b] * stds[2][c] * stds[3][d] * stds[4][e];
         let total_odds = odds[0][a] as u32
             * odds[1][b] as u32

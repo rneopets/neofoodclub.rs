@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use itertools::Itertools;
+use itertools::{iproduct, Itertools};
 use rand::RngExt;
 
 use crate::chance::Chance;
@@ -442,43 +442,28 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
 
     // stds[arena][0] == 1.0 and odds[arena][0] == 1 by construction (validated on input),
     // so multiplying by index-0 values is always a no-op, no zero-checks needed.
-    for a in 0..5usize {
-        let prob_a = stds[0][a];
-        let odds_a = odds[0][a] as u32;
-        let bin_a = pirate_binary(a as u8, 0);
-        for b in 0..5usize {
-            let prob_ab = prob_a * stds[1][b];
-            let odds_ab = odds_a * odds[1][b] as u32;
-            let bin_ab = bin_a | pirate_binary(b as u8, 1);
-            for c in 0..5usize {
-                let prob_abc = prob_ab * stds[2][c];
-                let odds_abc = odds_ab * odds[2][c] as u32;
-                let bin_abc = bin_ab | pirate_binary(c as u8, 2);
-                for d in 0..5usize {
-                    let prob_abcd = prob_abc * stds[3][d];
-                    let odds_abcd = odds_abc * odds[3][d] as u32;
-                    let bin_abcd = bin_abc | pirate_binary(d as u8, 3);
-                    for e in 0..5usize {
-                        if a == 0 && b == 0 && c == 0 && d == 0 && e == 0 {
-                            continue;
-                        }
-
-                        let total_probs = prob_abcd * stds[4][e];
-                        let total_odds = odds_abcd * odds[4][e] as u32;
-                        let total_bin = bin_abcd | pirate_binary(e as u8, 4);
-
-                        let er = total_probs * total_odds as f64;
-                        let maxbet = 1_000_000u32.div_ceil(total_odds);
-
-                        bins.push(total_bin);
-                        probs.push(total_probs);
-                        odds_vec.push(total_odds);
-                        ers.push(er);
-                        maxbets.push(maxbet);
-                    }
-                }
-            }
+    for (a, b, c, d, e) in iproduct!(0..5usize, 0..5usize, 0..5usize, 0..5usize, 0..5usize) {
+        if a == 0 && b == 0 && c == 0 && d == 0 && e == 0 {
+            continue;
         }
+        let total_probs = stds[0][a] * stds[1][b] * stds[2][c] * stds[3][d] * stds[4][e];
+        let total_odds = odds[0][a] as u32
+            * odds[1][b] as u32
+            * odds[2][c] as u32
+            * odds[3][d] as u32
+            * odds[4][e] as u32;
+        let total_bin = pirate_binary(a as u8, 0)
+            | pirate_binary(b as u8, 1)
+            | pirate_binary(c as u8, 2)
+            | pirate_binary(d as u8, 3)
+            | pirate_binary(e as u8, 4);
+        let er = total_probs * total_odds as f64;
+        let maxbet = 1_000_000u32.div_ceil(total_odds);
+        bins.push(total_bin);
+        probs.push(total_probs);
+        odds_vec.push(total_odds);
+        ers.push(er);
+        maxbets.push(maxbet);
     }
 
     RoundDictData {

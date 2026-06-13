@@ -450,19 +450,31 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
             let (prob_ab, odds_ab, bin_ab) = if b == 0 {
                 (prob_a, odds_a, bin_a)
             } else {
-                (prob_a * stds[1][b], odds_a * odds[1][b] as u32, bin_a | pirate_binary(b as u8, 1))
+                (
+                    prob_a * stds[1][b],
+                    odds_a * odds[1][b] as u32,
+                    bin_a | pirate_binary(b as u8, 1),
+                )
             };
             for c in 0..5usize {
                 let (prob_abc, odds_abc, bin_abc) = if c == 0 {
                     (prob_ab, odds_ab, bin_ab)
                 } else {
-                    (prob_ab * stds[2][c], odds_ab * odds[2][c] as u32, bin_ab | pirate_binary(c as u8, 2))
+                    (
+                        prob_ab * stds[2][c],
+                        odds_ab * odds[2][c] as u32,
+                        bin_ab | pirate_binary(c as u8, 2),
+                    )
                 };
                 for d in 0..5usize {
                     let (prob_abcd, odds_abcd, bin_abcd) = if d == 0 {
                         (prob_abc, odds_abc, bin_abc)
                     } else {
-                        (prob_abc * stds[3][d], odds_abc * odds[3][d] as u32, bin_abc | pirate_binary(d as u8, 3))
+                        (
+                            prob_abc * stds[3][d],
+                            odds_abc * odds[3][d] as u32,
+                            bin_abc | pirate_binary(d as u8, 3),
+                        )
                     };
                     for e in 0..5usize {
                         if a == 0 && b == 0 && c == 0 && d == 0 && e == 0 {
@@ -472,7 +484,11 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
                         let (total_probs, total_odds, total_bin) = if e == 0 {
                             (prob_abcd, odds_abcd, bin_abcd)
                         } else {
-                            (prob_abcd * stds[4][e], odds_abcd * odds[4][e] as u32, bin_abcd | pirate_binary(e as u8, 4))
+                            (
+                                prob_abcd * stds[4][e],
+                                odds_abcd * odds[4][e] as u32,
+                                bin_abcd | pirate_binary(e as u8, 4),
+                            )
                         };
 
                         let er = total_probs * total_odds as f64;

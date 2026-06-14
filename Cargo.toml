@@ -28,3 +28,10 @@ harness = false
 
 [dev-dependencies]
 divan = { version = "4.3.0", package = "codspeed-divan-compat" }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

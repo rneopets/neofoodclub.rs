@@ -116,11 +116,13 @@ impl NeoFoodClub {
     }
 
     /// Lazy loads the Arenas object.
+    #[inline]
     pub fn get_arenas(&self) -> &Arenas {
         self.arenas.get_or_init(|| Arenas::new(&self.round_data))
     }
 
     /// Lazy loads the probabilities.
+    #[inline]
     pub fn probabilities(&self) -> [[f64; 5]; 5] {
         *self.stds.get_or_init(|| match self.probability_model {
             ProbabilityModel::OriginalModel => OriginalModel::new(&self.round_data),
@@ -131,6 +133,7 @@ impl NeoFoodClub {
     }
 
     /// Lazy loads the RoundDictData object.
+    #[inline]
     pub fn round_dict_data(&self) -> &RoundDictData {
         self.data
             .get_or_init(|| make_round_dicts(self.probabilities(), self.custom_odds()))
@@ -419,6 +422,7 @@ impl NeoFoodClub {
     }
 
     /// Returns the maximum TER values we'll use.
+    #[inline]
     pub fn max_ters(&self) -> &Vec<f64> {
         let general = self.modifier.is_general();
         let data = self.round_dict_data();
@@ -466,7 +470,7 @@ impl NeoFoodClub {
                 indices.reverse();
             }
 
-            indices.to_vec()
+            indices
         })
     }
 
@@ -483,7 +487,7 @@ impl NeoFoodClub {
             indices.reverse();
         }
 
-        indices.iter().copied().take(amount).collect()
+        indices.into_iter().take(amount).collect()
     }
 
     /// Returns sorted indices of probabilities
@@ -499,7 +503,7 @@ impl NeoFoodClub {
             indices.reverse();
         }
 
-        indices.iter().copied().take(amount).collect()
+        indices.into_iter().take(amount).collect()
     }
 
     /// Return the binary representation of the highest expected return full-arena bet.

@@ -20,12 +20,12 @@ fn get_indices_3124() -> &'static [usize; 3124] {
 /// Specialized argsort for 3124-element slices
 /// Panics if slice length != 3124
 #[inline]
-pub fn argsort_slice_3124<T, F>(arr: &[T], compare: F) -> Box<[usize; 3124]>
+pub fn argsort_slice_3124<T, F>(arr: &[T], compare: F) -> Vec<usize>
 where
     F: Fn(&T, &T) -> Ordering,
 {
     assert_eq!(arr.len(), 3124, "Slice must have exactly 3124 elements");
-    let mut indices: Box<[usize; 3124]> = Box::new(*get_indices_3124());
+    let mut indices = get_indices_3124().to_vec();
     indices.sort_unstable_by(|&i, &j| compare(&arr[i], &arr[j]));
     indices
 }

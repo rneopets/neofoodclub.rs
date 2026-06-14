@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 
 use itertools::Itertools;
 use rand::RngExt;
@@ -385,7 +385,7 @@ pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32>
     // makes a dict of permutations of the pirates + odds
     // this is why the bet table could be very long
 
-    let mut bets_to_ib: HashMap<u32, u32> = HashMap::new();
+    let mut bets_to_ib: HashMap<u32, u32> = HashMap::with_capacity(bets.len());
     for (key, bet_value) in bets.iter().enumerate() {
         let ib = bet_value
             .iter()
@@ -490,15 +490,18 @@ pub fn build_chance_objects(
     probabilities: [[f64; 5]; 5],
 ) -> Vec<Chance> {
     let expanded = expand_ib_object(bets, bet_odds);
-    let mut win_table: BTreeMap<u32, f64> = BTreeMap::new();
+    let mut win_table: HashMap<u32, f64> = HashMap::new();
     for (key, value) in expanded.iter() {
         *win_table.entry(*value).or_insert(0.0) += ib_prob(*key, probabilities);
     }
 
+    let mut sorted: Vec<(u32, f64)> = win_table.into_iter().collect();
+    sorted.sort_unstable_by_key(|&(k, _)| k);
+
     let mut cumulative: f64 = 0.0;
     let mut tail: f64 = 1.0;
-    let mut chances: Vec<Chance> = Vec::with_capacity(win_table.len());
-    for (key, value) in win_table.into_iter() {
+    let mut chances: Vec<Chance> = Vec::with_capacity(sorted.len());
+    for (key, value) in sorted {
         cumulative += value;
         chances.push(Chance {
             value: key,

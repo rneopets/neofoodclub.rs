@@ -413,7 +413,11 @@ pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32>
     let mut drained_elements: Vec<u32> = Vec::new();
     for (ib_bet, winnings) in bets_to_ib.into_iter() {
         drained_elements.clear();
-        drained_elements.extend(res.keys().copied().filter(|ib_key| ib_doable(ib_bet & ib_key)));
+        drained_elements.extend(
+            res.keys()
+                .copied()
+                .filter(|ib_key| ib_doable(ib_bet & ib_key)),
+        );
         for mut ib_key in drained_elements.iter().copied() {
             let com = ib_bet & ib_key;
             let val_key = res

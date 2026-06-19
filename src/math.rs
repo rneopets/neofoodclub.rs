@@ -131,6 +131,39 @@ pub fn amounts_hash_check(amounts_hash: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn decode_hash_raw(bets_hash: &str) -> Vec<u8> {
+    // Pre-allocate output with exact capacity needed (2 values per hash char, rounded up to multiple of 5)
+    let raw_len = bets_hash.len() * 2;
+    let padded_len = raw_len.div_ceil(5) * 5;
+    let mut output = vec![0u8; padded_len];
+
+    // Decode directly using integer division (avoids float conversion)
+    for (i, byte) in bets_hash.bytes().enumerate() {
+        let e = byte - b'a';
+        output[i * 2] = e / 5; // integer division instead of float
+        output[i * 2 + 1] = e % 5;
+    }
+    output
+}
+
+#[inline]
+fn nonzero_chunks(raw: &[u8]) -> impl Iterator<Item = [u8; 5]> + '_ {
+    // due to the way this algorithm works, there could be resulting chunks that are entirely all 0,
+    // so we filter them out.
+    // good examples:
+    // "faa" -> [[1, 0, 0, 0, 0,], [0]]
+    // "faafaafaafaafaafaa" -> [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1], [0, 0, 0, 0, 0], [1, 0, 0, 0, 0]]
+    // --------------------------------------------------------------------------------------------------------------^ note the array containing all zeros
+    raw.chunks_exact(5).filter_map(|c| {
+        // Check if any value is non-zero using bitwise OR (faster than iterator)
+        if (c[0] | c[1] | c[2] | c[3] | c[4]) != 0 {
+            Some([c[0], c[1], c[2], c[3], c[4]])
+        } else {
+            None
+        }
+    })
+}
+
 /// Returns the bet indices from a given bet hash.
 /// ```
 /// let bin = neofoodclub::math::bets_hash_to_bet_indices("").unwrap();
@@ -151,37 +184,7 @@ pub fn amounts_hash_check(amounts_hash: &str) -> Result<(), String> {
 #[inline]
 pub fn bets_hash_to_bet_indices(bets_hash: &str) -> Result<Vec<[u8; 5]>, String> {
     bets_hash_check(bets_hash)?;
-
-    // Pre-allocate output with exact capacity needed (2 values per hash char, rounded up to multiple of 5)
-    let raw_len = bets_hash.len() * 2;
-    let padded_len = raw_len.div_ceil(5) * 5;
-    let mut output = vec![0u8; padded_len];
-
-    // Decode directly using integer division (avoids float conversion)
-    for (i, byte) in bets_hash.bytes().enumerate() {
-        let e = byte - b'a';
-        output[i * 2] = e / 5; // integer division instead of float
-        output[i * 2 + 1] = e % 5;
-    }
-
-    // due to the way this algorithm works, there could be resulting chunks that are entirely all 0,
-    // so we filter them out.
-    // good examples:
-    // "faa" -> [[1, 0, 0, 0, 0,], [0]]
-    // "faafaafaafaafaafaa" -> [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1], [0, 0, 0, 0, 0], [1, 0, 0, 0, 0]]
-    // --------------------------------------------------------------------------------------------------------------^ note the array containing all zeros
-
-    Ok(output
-        .chunks_exact(5)
-        .filter_map(|chunk| {
-            // Check if any value is non-zero using bitwise OR (faster than iterator)
-            if (chunk[0] | chunk[1] | chunk[2] | chunk[3] | chunk[4]) != 0 {
-                Some([chunk[0], chunk[1], chunk[2], chunk[3], chunk[4]])
-            } else {
-                None
-            }
-        })
-        .collect())
+    Ok(nonzero_chunks(&decode_hash_raw(bets_hash)).collect())
 }
 
 /// Returns the amount of bets from a given bet hash.
@@ -201,18 +204,7 @@ pub fn bets_hash_to_bet_indices(bets_hash: &str) -> Result<Vec<[u8; 5]>, String>
 #[inline]
 pub fn bets_hash_to_bets_count(bets_hash: &str) -> Result<usize, String> {
     bets_hash_check(bets_hash)?;
-    let raw_len = bets_hash.len() * 2;
-    let padded_len = raw_len.div_ceil(5) * 5;
-    let mut output = vec![0u8; padded_len];
-    for (i, byte) in bets_hash.bytes().enumerate() {
-        let e = byte - b'a';
-        output[i * 2] = e / 5;
-        output[i * 2 + 1] = e % 5;
-    }
-    Ok(output
-        .chunks_exact(5)
-        .filter(|c| (c[0] | c[1] | c[2] | c[3] | c[4]) != 0)
-        .count())
+    Ok(nonzero_chunks(&decode_hash_raw(bets_hash)).count())
 }
 
 /// Returns the hash of the given bet amounts.

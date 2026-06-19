@@ -201,7 +201,18 @@ pub fn bets_hash_to_bet_indices(bets_hash: &str) -> Result<Vec<[u8; 5]>, String>
 #[inline]
 pub fn bets_hash_to_bets_count(bets_hash: &str) -> Result<usize, String> {
     bets_hash_check(bets_hash)?;
-    Ok(bets_hash_to_bet_indices(bets_hash)?.len())
+    let raw_len = bets_hash.len() * 2;
+    let padded_len = raw_len.div_ceil(5) * 5;
+    let mut output = vec![0u8; padded_len];
+    for (i, byte) in bets_hash.bytes().enumerate() {
+        let e = byte - b'a';
+        output[i * 2] = e / 5;
+        output[i * 2 + 1] = e % 5;
+    }
+    Ok(output
+        .chunks_exact(5)
+        .filter(|c| (c[0] | c[1] | c[2] | c[3] | c[4]) != 0)
+        .count())
 }
 
 /// Returns the hash of the given bet amounts.
@@ -360,7 +371,7 @@ fn ib_doable(binary: u32) -> bool {
 }
 
 #[inline]
-fn ib_prob(binary: u32, probabilities: [[f64; 5]; 5]) -> f64 {
+fn ib_prob(binary: u32, probabilities: &[[f64; 5]; 5]) -> f64 {
     // computes the probability that the winning combination is accepted by ib
     BIT_MASKS
         .iter()
@@ -398,14 +409,12 @@ pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32>
     let mut res: HashMap<u32, u32> = HashMap::new();
     res.insert(0xFFFFF, 0);
     let mut bets_to_ib: Vec<_> = bets_to_ib.into_iter().collect();
-    bets_to_ib.sort();
+    bets_to_ib.sort_unstable();
+    let mut drained_elements: Vec<u32> = Vec::new();
     for (ib_bet, winnings) in bets_to_ib.into_iter() {
-        let drained_elements: Vec<_> = res
-            .keys()
-            .copied()
-            .filter(|ib_key| ib_doable(ib_bet & ib_key))
-            .collect();
-        for mut ib_key in drained_elements.into_iter() {
+        drained_elements.clear();
+        drained_elements.extend(res.keys().copied().filter(|ib_key| ib_doable(ib_bet & ib_key)));
+        for mut ib_key in drained_elements.iter().copied() {
             let com = ib_bet & ib_key;
             let val_key = res
                 .remove(&ib_key)
@@ -443,25 +452,28 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
     // stds[arena][0] == 1.0 and odds[arena][0] == 1 by construction (validated on input),
     // so multiplying by index-0 values is always a no-op, no zero-checks needed.
     for a in 0..5usize {
+        let prob_a = stds[0][a];
+        let odds_a = odds[0][a] as u32;
+        let bin_a = pirate_binary(a as u8, 0);
         for b in 0..5usize {
+            let prob_ab = prob_a * stds[1][b];
+            let odds_ab = odds_a * odds[1][b] as u32;
+            let bin_ab = bin_a | pirate_binary(b as u8, 1);
             for c in 0..5usize {
+                let prob_abc = prob_ab * stds[2][c];
+                let odds_abc = odds_ab * odds[2][c] as u32;
+                let bin_abc = bin_ab | pirate_binary(c as u8, 2);
                 for d in 0..5usize {
+                    let prob_abcd = prob_abc * stds[3][d];
+                    let odds_abcd = odds_abc * odds[3][d] as u32;
+                    let bin_abcd = bin_abc | pirate_binary(d as u8, 3);
                     for e in 0..5usize {
                         if a == 0 && b == 0 && c == 0 && d == 0 && e == 0 {
                             continue;
                         }
-                        let total_probs =
-                            stds[0][a] * stds[1][b] * stds[2][c] * stds[3][d] * stds[4][e];
-                        let total_odds = odds[0][a] as u32
-                            * odds[1][b] as u32
-                            * odds[2][c] as u32
-                            * odds[3][d] as u32
-                            * odds[4][e] as u32;
-                        let total_bin = pirate_binary(a as u8, 0)
-                            | pirate_binary(b as u8, 1)
-                            | pirate_binary(c as u8, 2)
-                            | pirate_binary(d as u8, 3)
-                            | pirate_binary(e as u8, 4);
+                        let total_probs = prob_abcd * stds[4][e];
+                        let total_odds = odds_abcd * odds[4][e] as u32;
+                        let total_bin = bin_abcd | pirate_binary(e as u8, 4);
                         let er = total_probs * total_odds as f64;
                         let maxbet = 1_000_000u32.div_ceil(total_odds);
                         bins.push(total_bin);
@@ -492,7 +504,7 @@ pub fn build_chance_objects(
     let expanded = expand_ib_object(bets, bet_odds);
     let mut win_table: HashMap<u32, f64> = HashMap::new();
     for (key, value) in expanded.iter() {
-        *win_table.entry(*value).or_insert(0.0) += ib_prob(*key, probabilities);
+        *win_table.entry(*value).or_insert(0.0) += ib_prob(*key, &probabilities);
     }
 
     let mut sorted: Vec<(u32, f64)> = win_table.into_iter().collect();

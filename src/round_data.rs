@@ -20,6 +20,22 @@ pub struct RoundData {
     pub lastChange: Option<String>,
 }
 
+/// Validates that a timestamp string is a well-formed RFC3339 timestamp.
+///
+/// This is used by [`crate::nfc::NeoFoodClub`]'s construction-time validation
+/// (`validate_round_data`) to reject malformed `start`/`lastChange`/`timestamp`/
+/// `changes[].t` strings *before* they ever reach the accessor methods below
+/// (e.g. [`RoundData::start_utc`], [`crate::oddschange::OddsChange::timestamp_utc`]),
+/// which call [`crate::utils::timestamp_to_utc`] and panic on invalid input.
+/// Because that invariant is enforced here, at construction time,
+/// `timestamp_to_utc` itself is allowed to keep unwrapping internally.
+pub(crate) fn validate_timestamp(timestamp: &str) -> Result<(), crate::error::NfcError> {
+    chrono::DateTime::parse_from_rfc3339(timestamp).map_err(|e| {
+        crate::error::NfcError::RoundData(format!("invalid timestamp '{}': {}", timestamp, e))
+    })?;
+    Ok(())
+}
+
 impl RoundData {
     /// Returns the start time of the round in NST.
     /// If the start time is not available, returns None.
@@ -65,5 +81,20 @@ impl RoundData {
         self.timestamp
             .as_ref()
             .map(|timestamp| timestamp_to_utc(timestamp))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_validate_timestamp_valid() {
+        assert!(validate_timestamp("2023-01-01T00:00:00+00:00").is_ok());
+    }
+
+    #[test]
+    fn test_validate_timestamp_invalid() {
+        assert!(validate_timestamp("not-a-timestamp").is_err());
     }
 }

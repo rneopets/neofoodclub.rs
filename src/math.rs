@@ -154,10 +154,10 @@ fn nonzero_chunks(raw: &[u8]) -> impl Iterator<Item = [u8; 5]> + '_ {
     // "faa" -> [[1, 0, 0, 0, 0,], [0]]
     // "faafaafaafaafaafaa" -> [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1], [0, 0, 0, 0, 0], [1, 0, 0, 0, 0]]
     // --------------------------------------------------------------------------------------------------------------^ note the array containing all zeros
-    raw.chunks_exact(5).filter_map(|c| {
+    raw.as_chunks::<5>().0.iter().filter_map(|c| {
         // Check if any value is non-zero using bitwise OR (faster than iterator)
         if (c[0] | c[1] | c[2] | c[3] | c[4]) != 0 {
-            Some([c[0], c[1], c[2], c[3], c[4]])
+            Some(*c)
         } else {
             None
         }

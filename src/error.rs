@@ -20,4 +20,16 @@ pub enum NfcError {
 
     #[error("Too many pirates selected from one arena")]
     TooManyPiratesInArena,
+
+    #[error("Invalid bets hash: {0}")]
+    BetsHash(String),
+
+    #[error("Invalid amounts hash: {0}")]
+    AmountsHash(String),
+
+    #[error("Invalid bet amount: {0}")]
+    BetAmount(String),
+
+    #[error("Invalid bet: {0}")]
+    InvalidBet(String),
 }

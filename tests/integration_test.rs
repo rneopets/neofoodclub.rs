@@ -13,11 +13,11 @@ const ROUND_DATA_JSON: &str = r#"
 "#;
 
 // Round 7956
-const ROUND_DATA_URL: &str = r#"/#round=7956&pirates=[[2,8,14,11],[20,7,6,10],[19,4,12,15],[3,1,5,13],[17,16,18,9]]&openingOdds=[[1,2,13,3,5],[1,4,2,4,5],[1,3,13,7,2],[1,13,2,3,3],[1,12,2,6,13]]&currentOdds=[[1,2,13,3,5],[1,4,2,4,6],[1,3,13,7,2],[1,13,2,3,3],[1,8,2,4,12]]&foods=[[26,25,4,9,21,1,33,11,7,10],[12,9,14,35,25,6,21,19,40,37],[17,30,21,39,37,15,29,40,31,10],[10,18,35,9,34,23,27,32,28,12],[11,20,9,33,7,14,4,23,31,26]]&winners=[1,3,4,2,4]&timestamp=2021-02-16T23:47:37+00:00"#;
+const ROUND_DATA_URL: &str = r#"/#round=7956&pirates=[[2,8,14,11],[20,7,6,10],[19,4,12,15],[3,1,5,13],[17,16,18,9]]&openingOdds=[[1,2,13,3,5],[1,4,2,4,5],[1,3,13,7,2],[1,13,2,3,3],[1,12,2,6,13]]&currentOdds=[[1,2,13,3,5],[1,4,2,4,6],[1,3,13,7,2],[1,13,2,3,3],[1,8,2,4,12]]&foods=[[26,25,4,9,21,1,33,11,7,10],[12,9,14,35,25,6,21,19,40,37],[17,30,21,39,37,15,29,40,31,10],[10,18,35,9,34,23,27,32,28,12],[11,20,9,33,7,14,4,23,31,26]]&winners=[1,3,4,2,4]&timestamp=2021-02-16T23:47:37%2B00:00"#;
 
 // Modified URLs
 // winners removed
-const ROUND_DATA_URL_NO_WINNERS: &str = r#"/#round=7956&pirates=[[2,8,14,11],[20,7,6,10],[19,4,12,15],[3,1,5,13],[17,16,18,9]]&openingOdds=[[1,2,13,3,5],[1,4,2,4,5],[1,3,13,7,2],[1,13,2,3,3],[1,12,2,6,13]]&currentOdds=[[1,2,13,3,5],[1,4,2,4,6],[1,3,13,7,2],[1,13,2,3,3],[1,8,2,4,12]]&foods=[[26,25,4,9,21,1,33,11,7,10],[12,9,14,35,25,6,21,19,40,37],[17,30,21,39,37,15,29,40,31,10],[10,18,35,9,34,23,27,32,28,12],[11,20,9,33,7,14,4,23,31,26]]&timestamp=2021-02-16T23:47:37+00:00"#;
+const ROUND_DATA_URL_NO_WINNERS: &str = r#"/#round=7956&pirates=[[2,8,14,11],[20,7,6,10],[19,4,12,15],[3,1,5,13],[17,16,18,9]]&openingOdds=[[1,2,13,3,5],[1,4,2,4,5],[1,3,13,7,2],[1,13,2,3,3],[1,12,2,6,13]]&currentOdds=[[1,2,13,3,5],[1,4,2,4,6],[1,3,13,7,2],[1,13,2,3,3],[1,8,2,4,12]]&foods=[[26,25,4,9,21,1,33,11,7,10],[12,9,14,35,25,6,21,19,40,37],[17,30,21,39,37,15,29,40,31,10],[10,18,35,9,34,23,27,32,28,12],[11,20,9,33,7,14,4,23,31,26]]&timestamp=2021-02-16T23:47:37%2B00:00"#;
 
 const BET_AMOUNT: u32 = 8000;
 
@@ -811,7 +811,10 @@ mod tests {
     fn test_amounts_hash_to_bet_amounts_invalid() {
         let result = math::amounts_hash_to_bet_amounts("🎲");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid amounts hash"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid amounts hash"));
     }
 
     #[test]
@@ -819,14 +822,17 @@ mod tests {
         // Valid charset, invalid length (must be a multiple of 3)
         let result = math::amounts_hash_to_bet_amounts("a");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid amounts hash"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid amounts hash"));
     }
 
     #[test]
     fn test_bets_hash_to_bets_count_invalid() {
         let result = math::bets_hash_to_bets_count("🎲");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid bet hash"));
+        assert!(result.unwrap_err().to_string().contains("Invalid bet hash"));
     }
 
     #[test]
@@ -1136,7 +1142,7 @@ mod tests {
 
         let modifier = Modifier::new(ModifierFlags::EMPTY.bits(), Some(custom_odds), None).unwrap();
 
-        let new_modifier = modifier.copy();
+        let new_modifier = modifier.clone();
 
         assert_eq!(modifier, new_modifier);
     }
@@ -1401,7 +1407,10 @@ mod tests {
 
         let result = Modifier::new(ModifierFlags::empty().bits(), Some(custom_odds), None);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid pirate ID"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid pirate ID"));
     }
 
     #[test]
@@ -1411,7 +1420,7 @@ mod tests {
 
         let result = Modifier::new(ModifierFlags::empty().bits(), Some(custom_odds), None);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid odds"));
+        assert!(result.unwrap_err().to_string().contains("Invalid odds"));
     }
 
     #[test]
@@ -1794,7 +1803,7 @@ mod tests {
 
         let modifier = Modifier::new(ModifierFlags::REVERSE.bits(), None, None).unwrap();
 
-        nfc.with_modifier(modifier);
+        nfc.with_modifier(modifier).unwrap();
 
         let reverse_mer = nfc.make_max_ter_bets();
 
@@ -1807,7 +1816,7 @@ mod tests {
         )
         .unwrap();
 
-        nfc.with_modifier(another_modifier.clone());
+        nfc.with_modifier(another_modifier.clone()).unwrap();
 
         assert!(nfc.modifier.is_opening_odds());
 
@@ -1822,7 +1831,7 @@ mod tests {
         )
         .unwrap();
 
-        nfc.with_modifier(another_another_modifier.clone());
+        nfc.with_modifier(another_another_modifier.clone()).unwrap();
 
         assert_eq!(
             another_modifier.custom_odds,
@@ -1841,9 +1850,11 @@ mod tests {
         let mer = nfc.make_max_ter_bets();
         let gmer = nfc
             .with_modifier(Modifier::new(ModifierFlags::GENERAL.bits(), None, None).unwrap())
+            .unwrap()
             .make_max_ter_bets();
         let reset_mer = nfc
             .with_modifier(Modifier::new(ModifierFlags::EMPTY.bits(), None, None).unwrap())
+            .unwrap()
             .make_max_ter_bets();
 
         assert_ne!(mer.get_binaries(), gmer.get_binaries());
@@ -1857,12 +1868,14 @@ mod tests {
         let mer = nfc.make_max_ter_bets();
 
         let opening_odds_nfc = nfc
-            .with_modifier(Modifier::new(ModifierFlags::OPENING_ODDS.bits(), None, None).unwrap());
+            .with_modifier(Modifier::new(ModifierFlags::OPENING_ODDS.bits(), None, None).unwrap())
+            .unwrap();
 
         let omer = opening_odds_nfc.make_max_ter_bets();
 
         let reset_mer = nfc
             .with_modifier(Modifier::new(ModifierFlags::EMPTY.bits(), None, None).unwrap())
+            .unwrap()
             .make_max_ter_bets();
 
         assert_ne!(mer.get_binaries(), omer.get_binaries());
@@ -2034,7 +2047,7 @@ mod tests {
         let cc = Modifier::new(ModifierFlags::CHARITY_CORNER.bits(), None, None).unwrap();
         assert!(cc.is_charity_corner());
 
-        let copy = general.copy();
+        let copy = general.clone();
         assert_eq!(general, copy);
     }
 
@@ -2180,7 +2193,10 @@ mod panic_tests {
         custom_odds.insert(21, 2);
         let result = Modifier::new(0, Some(custom_odds), None);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid pirate ID"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid pirate ID"));
     }
 
     #[test]
@@ -2189,7 +2205,10 @@ mod panic_tests {
         custom_odds.insert(0, 2);
         let result = Modifier::new(0, Some(custom_odds), None);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid pirate ID"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid pirate ID"));
     }
 
     #[test]
@@ -2198,7 +2217,7 @@ mod panic_tests {
         custom_odds.insert(1, 14);
         let result = Modifier::new(0, Some(custom_odds), None);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid odds"));
+        assert!(result.unwrap_err().to_string().contains("Invalid odds"));
     }
 
     #[test]
@@ -2207,7 +2226,7 @@ mod panic_tests {
         custom_odds.insert(1, 1);
         let result = Modifier::new(0, Some(custom_odds), None);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid odds"));
+        assert!(result.unwrap_err().to_string().contains("Invalid odds"));
     }
 
     #[test]
@@ -2221,6 +2240,7 @@ mod panic_tests {
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
+            .to_string()
             .contains("Bet amounts must be the same length as bet indices, or None."));
     }
 
@@ -2264,14 +2284,17 @@ mod panic_tests {
     fn test_bets_hash_to_bet_indices_invalid() {
         let result = neofoodclub::math::bets_hash_to_bet_indices("z");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid bet hash"));
+        assert!(result.unwrap_err().to_string().contains("Invalid bet hash"));
     }
 
     #[test]
     fn test_amounts_hash_to_bet_amounts_invalid() {
         let result = neofoodclub::math::amounts_hash_to_bet_amounts("!");
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Invalid amounts hash"));
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid amounts hash"));
     }
 
     #[test]
@@ -2310,6 +2333,7 @@ mod panic_tests {
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
+            .to_string()
             .contains("You can only pick 1 pirate per arena."));
     }
 
@@ -2371,19 +2395,19 @@ mod panic_tests {
     #[test]
     fn test_validate_current_odds_first_not_1() {
         let mut round_data = get_valid_round_data();
-        round_data.currentOdds[0][0] = 2;
+        round_data.current_odds[0][0] = 2;
         let result = NeoFoodClub::new(round_data, None, None, None);
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("First integer in each arena in currentOdds must be 1."));
+            .contains("First integer in each arena in odds must be 1."));
     }
 
     #[test]
     fn test_validate_current_odds_lt() {
         let mut round_data = get_valid_round_data();
-        round_data.currentOdds[0][1] = 1;
+        round_data.current_odds[0][1] = 1;
         let result = NeoFoodClub::new(round_data, None, None, None);
         assert!(result.is_err());
         assert!(result
@@ -2395,7 +2419,7 @@ mod panic_tests {
     #[test]
     fn test_validate_current_odds_gt() {
         let mut round_data = get_valid_round_data();
-        round_data.currentOdds[0][1] = 14;
+        round_data.current_odds[0][1] = 14;
         let result = NeoFoodClub::new(round_data, None, None, None);
         assert!(result.is_err());
         assert!(result
@@ -2407,19 +2431,19 @@ mod panic_tests {
     #[test]
     fn test_validate_opening_odds_first_not_1() {
         let mut round_data = get_valid_round_data();
-        round_data.openingOdds[0][0] = 2;
+        round_data.opening_odds[0][0] = 2;
         let result = NeoFoodClub::new(round_data, None, None, None);
         assert!(result.is_err());
         assert!(result
             .unwrap_err()
             .to_string()
-            .contains("First integer in each arena in openingOdds must be 1."));
+            .contains("First integer in each arena in odds must be 1."));
     }
 
     #[test]
     fn test_validate_opening_odds_lt() {
         let mut round_data = get_valid_round_data();
-        round_data.openingOdds[0][1] = 1;
+        round_data.opening_odds[0][1] = 1;
         let result = NeoFoodClub::new(round_data, None, None, None);
         assert!(result.is_err());
         assert!(result
@@ -2431,7 +2455,7 @@ mod panic_tests {
     #[test]
     fn test_validate_opening_odds_gt() {
         let mut round_data = get_valid_round_data();
-        round_data.openingOdds[0][1] = 14;
+        round_data.opening_odds[0][1] = 14;
         let result = NeoFoodClub::new(round_data, None, None, None);
         assert!(result.is_err());
         assert!(result

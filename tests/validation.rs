@@ -11,14 +11,14 @@ fn get_base_round_data() -> RoundData {
             [13, 14, 15, 16],
             [17, 18, 19, 20],
         ],
-        currentOdds: [
+        current_odds: [
             [1, 2, 3, 4, 5],
             [1, 6, 7, 8, 9],
             [1, 2, 3, 4, 5],
             [1, 6, 7, 8, 9],
             [1, 2, 3, 4, 5],
         ],
-        openingOdds: [
+        opening_odds: [
             [1, 2, 3, 4, 5],
             [1, 6, 7, 8, 9],
             [1, 2, 3, 4, 5],
@@ -27,11 +27,11 @@ fn get_base_round_data() -> RoundData {
         ],
         foods: None,
         winners: None,
-        customOdds: None,
+        custom_odds: None,
         start: None,
         timestamp: None,
         changes: None,
-        lastChange: None,
+        last_change: None,
     }
 }
 
@@ -74,19 +74,19 @@ fn test_invalid_pirate_id() {
 #[test]
 fn test_current_odds_first_element_not_1() {
     let mut data = get_base_round_data();
-    data.currentOdds[0][0] = 2;
+    data.current_odds[0][0] = 2;
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
     assert!(result
         .unwrap_err()
         .to_string()
-        .contains("First integer in each arena in currentOdds must be 1."));
+        .contains("First integer in each arena in odds must be 1."));
 }
 
 #[test]
 fn test_current_odds_out_of_range() {
     let mut data = get_base_round_data();
-    data.currentOdds[0][1] = 14;
+    data.current_odds[0][1] = 14;
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
     assert!(result
@@ -98,19 +98,19 @@ fn test_current_odds_out_of_range() {
 #[test]
 fn test_opening_odds_first_element_not_1() {
     let mut data = get_base_round_data();
-    data.openingOdds[0][0] = 2;
+    data.opening_odds[0][0] = 2;
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
     assert!(result
         .unwrap_err()
         .to_string()
-        .contains("First integer in each arena in openingOdds must be 1."));
+        .contains("First integer in each arena in odds must be 1."));
 }
 
 #[test]
 fn test_opening_odds_out_of_range() {
     let mut data = get_base_round_data();
-    data.openingOdds[0][1] = 1;
+    data.opening_odds[0][1] = 1;
     let result = NeoFoodClub::new(data, None, None, None);
     assert!(result.is_err());
     assert!(result

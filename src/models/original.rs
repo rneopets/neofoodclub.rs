@@ -6,7 +6,7 @@ pub struct OriginalModel;
 impl OriginalModel {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(round_data: &RoundData) -> [[f64; 5]; 5] {
-        make_probabilities(round_data.openingOdds)
+        make_probabilities(round_data.opening_odds)
     }
 }
 
@@ -188,7 +188,7 @@ mod tests {
         .unwrap();
 
         let from_model = OriginalModel::new(&round_data);
-        let expected = make_probabilities(round_data.openingOdds);
+        let expected = make_probabilities(round_data.opening_odds);
 
         assert_eq!(from_model, expected);
     }

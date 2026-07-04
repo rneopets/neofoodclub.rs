@@ -4,20 +4,43 @@ use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use serde::{Deserialize, Serialize};
 
-#[allow(non_snake_case)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RoundData {
     pub foods: Option<[[u8; 10]; 5]>,
     pub round: u16,
     pub start: Option<String>,
     pub pirates: [[u8; 4]; 5],
-    pub currentOdds: [[u8; 5]; 5],
-    pub customOdds: Option<[[u8; 5]; 5]>,
-    pub openingOdds: [[u8; 5]; 5],
+    #[serde(rename = "currentOdds")]
+    pub current_odds: [[u8; 5]; 5],
+    #[serde(rename = "customOdds")]
+    pub custom_odds: Option<[[u8; 5]; 5]>,
+    #[serde(rename = "openingOdds")]
+    pub opening_odds: [[u8; 5]; 5],
     pub winners: Option<[u8; 5]>,
     pub timestamp: Option<String>,
     pub changes: Option<Vec<OddsChange>>,
-    pub lastChange: Option<String>,
+    #[serde(rename = "lastChange")]
+    pub last_change: Option<String>,
+}
+
+/// Deserialization shim for the query-string encoding used in NeoFoodClub-like URLs,
+/// where nested structures (`pirates`, odds, `winners`) are themselves JSON-encoded
+/// strings rather than native JSON values. [`crate::nfc::NeoFoodClub::from_url`]
+/// converts this into a proper [`RoundData`].
+#[derive(Debug, Deserialize)]
+pub(crate) struct RoundDataRaw {
+    pub(crate) foods: Option<String>,
+    pub(crate) round: u16,
+    pub(crate) start: Option<String>,
+    pub(crate) pirates: String,
+    #[serde(rename = "openingOdds")]
+    pub(crate) opening_odds: String,
+    #[serde(rename = "currentOdds")]
+    pub(crate) current_odds: String,
+    pub(crate) winners: Option<String>,
+    pub(crate) timestamp: Option<String>,
+    #[serde(rename = "lastChange")]
+    pub(crate) last_change: Option<String>,
 }
 
 /// Validates that a timestamp string is a well-formed RFC3339 timestamp.
@@ -48,7 +71,7 @@ impl RoundData {
     /// Returns the last change time of the round in NST.
     /// If the last change time is not available, returns None.
     pub fn last_change_nst(&self) -> Option<DateTime<Tz>> {
-        self.lastChange
+        self.last_change
             .as_ref()
             .map(|last_change| convert_from_utc_to_nst(timestamp_to_utc(last_change)))
     }
@@ -70,7 +93,7 @@ impl RoundData {
     /// Returns the last change time of the round in UTC.
     /// If the last change time is not available, returns None.
     pub fn last_change_utc(&self) -> Option<DateTime<Utc>> {
-        self.lastChange
+        self.last_change
             .as_ref()
             .map(|last_change| timestamp_to_utc(last_change))
     }

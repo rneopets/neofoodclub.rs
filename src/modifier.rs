@@ -111,7 +111,7 @@ impl Modifier {
     pub fn apply(&self, round_data: &mut RoundData) -> Result<(), crate::error::NfcError> {
         // first, apply opening odds to current odds if necessary
         if self.is_opening_odds() {
-            round_data.customOdds = Some(round_data.openingOdds);
+            round_data.custom_odds = Some(round_data.opening_odds);
         }
 
         // apply custom time if necessary
@@ -119,7 +119,7 @@ impl Modifier {
         if let Some(start_time_as_nst) = &round_data.start_nst() {
             if let Some(custom_time) = &self.custom_time {
                 if let Some(changes) = &round_data.changes {
-                    let mut temp_odds = round_data.openingOdds; // as a starting point
+                    let mut temp_odds = round_data.opening_odds; // as a starting point
 
                     let mut custom_time = match start_time_as_nst
                         .date_naive()
@@ -157,14 +157,14 @@ impl Modifier {
                         round_data.changes = None;
                     }
 
-                    round_data.customOdds = Some(temp_odds);
+                    round_data.custom_odds = Some(temp_odds);
                 }
             }
         }
 
         // then, apply custom odds if necessary
         if let Some(custom_odds) = &self.custom_odds {
-            let mut temp_odds = round_data.customOdds.unwrap_or(round_data.currentOdds);
+            let mut temp_odds = round_data.custom_odds.unwrap_or(round_data.current_odds);
             round_data
                 .pirates
                 .iter()
@@ -177,7 +177,7 @@ impl Modifier {
                     });
                 });
 
-            round_data.customOdds = Some(temp_odds);
+            round_data.custom_odds = Some(temp_odds);
         }
 
         Ok(())

@@ -30,7 +30,7 @@ impl Arena {
     pub fn new(id: u8, round_data: &RoundData) -> Arena {
         let mut odds = 0.;
 
-        let use_odds = round_data.customOdds.unwrap_or(round_data.currentOdds);
+        let use_odds = round_data.custom_odds.unwrap_or(round_data.current_odds);
 
         // the pirate index of the winning pirate
         let winner = round_data.winners.unwrap_or([0; 5])[id as usize];
@@ -63,7 +63,7 @@ impl Arena {
                 arena_id: id,
                 index: (index + 1) as u8,
                 current_odds,
-                opening_odds: round_data.openingOdds[id as usize][index + 1],
+                opening_odds: round_data.opening_odds[id as usize][index + 1],
                 fa,
                 pfa,
                 nfa,

@@ -262,12 +262,11 @@ mod tests {
         // pirate_id (1-20) and food (1-40), ensuring no panics occur.
         for pirate_id in PIRATE_ID_RANGE {
             for food in FOOD_RANGE {
-                let pfa = POSITIVE_FOOD[pirate_id as usize - 1][food as usize - 1];
+                let _pfa = POSITIVE_FOOD[pirate_id as usize - 1][food as usize - 1];
                 let nfa = NEGATIVE_FOOD[pirate_id as usize - 1][food as usize - 1];
                 // values should be representable losslessly when negated per
                 // the arena.rs usage (`.sub(NEGATIVE_FOOD[..] as i8)`)
                 assert!(nfa as i8 >= 0);
-                assert!(pfa <= u8::MAX);
             }
         }
     }

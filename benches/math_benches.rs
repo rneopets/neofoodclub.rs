@@ -479,19 +479,19 @@ fn bench_amounts_hash() {
 fn bench_nfc_with_modifier_reverse() {
     let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let modifier = Modifier::new(ModifierFlags::REVERSE.bits(), None, None).unwrap();
-    divan::black_box(nfc.with_modifier(divan::black_box(modifier)));
+    divan::black_box(nfc.with_modifier(divan::black_box(modifier)).unwrap());
 }
 
 #[divan::bench]
 fn bench_nfc_with_modifier_opening_odds() {
     let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let modifier = Modifier::new(ModifierFlags::OPENING_ODDS.bits(), None, None).unwrap();
-    divan::black_box(nfc.with_modifier(divan::black_box(modifier)));
+    divan::black_box(nfc.with_modifier(divan::black_box(modifier)).unwrap());
 }
 
 #[divan::bench]
 fn bench_nfc_with_modifier_charity_corner() {
     let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let modifier = Modifier::new(ModifierFlags::CHARITY_CORNER.bits(), None, None).unwrap();
-    divan::black_box(nfc.with_modifier(divan::black_box(modifier)));
+    divan::black_box(nfc.with_modifier(divan::black_box(modifier)).unwrap());
 }

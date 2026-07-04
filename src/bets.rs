@@ -33,7 +33,7 @@ impl BetAmounts {
     pub fn to_vec(&self, length: usize) -> Result<Option<Vec<Option<u32>>>, NfcError> {
         match self {
             BetAmounts::AmountHash(hash) => {
-                let amounts = amounts_hash_to_bet_amounts(hash).map_err(NfcError::AmountsHash)?;
+                let amounts = amounts_hash_to_bet_amounts(hash)?;
                 Ok(Some(Self::clean_amounts(&amounts)))
             }
             BetAmounts::Amounts(amounts) => Ok(Some(Self::clean_amounts(amounts))),
@@ -236,7 +236,7 @@ impl Bets {
 
     /// Creates a new Bets struct from a hash
     pub fn from_hash(nfc: &NeoFoodClub, hash: &str) -> Result<Self, NfcError> {
-        let binaries = bets_hash_to_bet_binaries(hash).map_err(NfcError::BetsHash)?;
+        let binaries = bets_hash_to_bet_binaries(hash)?;
 
         Ok(Self::from_binaries(nfc, binaries))
     }

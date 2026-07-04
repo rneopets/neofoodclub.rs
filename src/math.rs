@@ -384,7 +384,7 @@ fn ib_prob(binary: u32, probabilities: &[[f64; 5]; 5]) -> f64 {
         })
 }
 
-pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32> {
+pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> std::collections::HashMap<u32, u32> {
     // makes a dict of permutations of the pirates + odds
     // this is why the bet table could be very long
 
@@ -427,7 +427,7 @@ pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32>
             }
         }
     }
-    res
+    res.into_iter().collect()
 }
 
 #[derive(Debug, Clone)]

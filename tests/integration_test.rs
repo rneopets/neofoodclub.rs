@@ -2181,7 +2181,7 @@ mod panic_tests {
         bets::BetAmounts, modifier::Modifier, nfc::NeoFoodClub, round_data::RoundData,
     };
 
-    use crate::{make_test_nfc, ROUND_DATA_JSON};
+    use crate::{make_test_nfc, ROUND_DATA_JSON, ROUND_DATA_URL};
 
     fn get_valid_round_data() -> RoundData {
         serde_json::from_str(ROUND_DATA_JSON).unwrap()
@@ -2572,6 +2572,21 @@ mod panic_tests {
             .unwrap_err()
             .to_string()
             .contains("ambiguous or invalid due to a DST transition"));
+    }
+
+    #[test]
+    fn test_from_url_invalid_modifier_custom_odds() {
+        // Modifier's fields are all `pub`, so a caller can construct one with invalid
+        // custom_odds directly (bypassing Modifier::new's validation), reaching from_url's
+        // own re-validation of the merged modifier.
+        let bad_modifier = Modifier {
+            value: 0,
+            custom_odds: Some(HashMap::from([(1, 20)])),
+            custom_time: None,
+        };
+        let result = NeoFoodClub::from_url(ROUND_DATA_URL, None, None, Some(bad_modifier));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("Invalid odds"));
     }
     // endregion
 }

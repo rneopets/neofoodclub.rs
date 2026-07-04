@@ -473,11 +473,12 @@ impl NeoFoodClub {
             argsort_slice_3124(&data.odds, |a: &u32, b: &u32| a.cmp(b))
         });
 
+        let mut result = indices.clone();
         if descending {
-            indices.iter().rev().take(amount).copied().collect()
-        } else {
-            indices.iter().take(amount).copied().collect()
+            result.reverse();
         }
+        result.truncate(amount);
+        result
     }
 
     /// Returns sorted indices of probabilities
@@ -489,11 +490,12 @@ impl NeoFoodClub {
             argsort_slice_3124(&data.probs, |a: &f64, b: &f64| a.total_cmp(b))
         });
 
+        let mut result = indices.clone();
         if descending {
-            indices.iter().rev().take(amount).copied().collect()
-        } else {
-            indices.iter().take(amount).copied().collect()
+            result.reverse();
         }
+        result.truncate(amount);
+        result
     }
 
     /// Return the binary representation of the highest expected return full-arena bet.

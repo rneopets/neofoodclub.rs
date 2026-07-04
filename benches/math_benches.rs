@@ -1,6 +1,7 @@
 use neofoodclub::math;
 use neofoodclub::modifier::{Modifier, ModifierFlags};
 use neofoodclub::nfc::{NeoFoodClub, ProbabilityModel};
+use neofoodclub::utils::argsort_slice_3124;
 
 fn main() {
     divan::main();
@@ -11,7 +12,7 @@ const ROUND_DATA_JSON: &str = r#"
 {"foods":[[5,20,24,21,18,7,34,29,38,8],[26,24,20,36,33,40,5,13,8,25],[5,29,22,31,40,27,30,4,8,19],[35,19,36,5,12,37,6,3,29,30],[28,24,36,17,18,9,1,33,19,3]],"round":8765,"start":"2023-05-05T23:14:57+00:00","changes":[{"t":"2023-05-06T00:17:30+00:00","new":7,"old":5,"arena":1,"pirate":3},{"t":"2023-05-06T00:21:43+00:00","new":10,"old":8,"arena":3,"pirate":2},{"t":"2023-05-06T00:21:43+00:00","new":6,"old":5,"arena":3,"pirate":3},{"t":"2023-05-06T00:21:43+00:00","new":6,"old":5,"arena":3,"pirate":4},{"t":"2023-05-06T01:09:14+00:00","new":4,"old":3,"arena":4,"pirate":2},{"t":"2023-05-06T01:48:19+00:00","new":3,"old":4,"arena":0,"pirate":4},{"t":"2023-05-06T02:04:11+00:00","new":4,"old":3,"arena":0,"pirate":4},{"t":"2023-05-06T07:29:28+00:00","new":3,"old":4,"arena":0,"pirate":4},{"t":"2023-05-06T09:44:15+00:00","new":5,"old":6,"arena":3,"pirate":3},{"t":"2023-05-06T09:55:08+00:00","new":4,"old":3,"arena":0,"pirate":2},{"t":"2023-05-06T11:11:17+00:00","new":12,"old":11,"arena":0,"pirate":1},{"t":"2023-05-06T16:29:01+00:00","new":11,"old":12,"arena":0,"pirate":1},{"t":"2023-05-06T17:16:30+00:00","new":3,"old":4,"arena":0,"pirate":2},{"t":"2023-05-06T19:16:49+00:00","new":4,"old":5,"arena":2,"pirate":3},{"t":"2023-05-06T19:21:01+00:00","new":6,"old":5,"arena":3,"pirate":3}],"pirates":[[6,11,4,3],[14,15,2,9],[10,16,18,20],[1,12,13,5],[8,19,17,7]],"winners":[3,2,3,2,2],"timestamp":"2023-05-06T23:14:20+00:00","lastChange":"2023-05-06T19:21:01+00:00","currentOdds":[[1,11,3,2,3],[1,13,2,7,13],[1,13,2,4,2],[1,2,10,6,6],[1,13,4,2,4]],"openingOdds":[[1,11,3,2,4],[1,13,2,5,13],[1,13,2,5,2],[1,2,8,5,5],[1,13,3,2,4]]}
 "#;
 
-const ROUND_DATA_URL: &str = r#"/#round=7956&pirates=[[2,8,14,11],[20,7,6,10],[19,4,12,15],[3,1,5,13],[17,16,18,9]]&openingOdds=[[1,2,13,3,5],[1,4,2,4,5],[1,3,13,7,2],[1,13,2,3,3],[1,12,2,6,13]]&currentOdds=[[1,2,13,3,5],[1,4,2,4,6],[1,3,13,7,2],[1,13,2,3,3],[1,8,2,4,12]]&foods=[[26,25,4,9,21,1,33,11,7,10],[12,9,14,35,25,6,21,19,40,37],[17,30,21,39,37,15,29,40,31,10],[10,18,35,9,34,23,27,32,28,12],[11,20,9,33,7,14,4,23,31,26]]&winners=[1,3,4,2,4]&timestamp=2021-02-16T23:47:37+00:00"#;
+const ROUND_DATA_URL: &str = r#"/#round=7956&pirates=[[2,8,14,11],[20,7,6,10],[19,4,12,15],[3,1,5,13],[17,16,18,9]]&openingOdds=[[1,2,13,3,5],[1,4,2,4,5],[1,3,13,7,2],[1,13,2,3,3],[1,12,2,6,13]]&currentOdds=[[1,2,13,3,5],[1,4,2,4,6],[1,3,13,7,2],[1,13,2,3,3],[1,8,2,4,12]]&foods=[[26,25,4,9,21,1,33,11,7,10],[12,9,14,35,25,6,21,19,40,37],[17,30,21,39,37,15,29,40,31,10],[10,18,35,9,34,23,27,32,28,12],[11,20,9,33,7,14,4,23,31,26]]&winners=[1,3,4,2,4]&timestamp=2021-02-16T23:47:37%2B00:00"#;
 
 const BET_AMOUNT: u32 = 8000;
 
@@ -107,6 +108,20 @@ fn bench_expand_ib_object() {
 }
 
 #[divan::bench]
+fn bench_argsort_slice_3124() {
+    // mimics real usage in nfc.rs, e.g. sorting expected-return-per-shot (ers)
+    // or probabilities, which are always exactly 3124 elements long
+    // (one entry per possible bet combination).
+    let values: Vec<f64> = (0..3124usize)
+        .map(|i| ((i.wrapping_mul(2654435761)) % 3124) as f64 / 3124.0)
+        .collect();
+    divan::black_box(argsort_slice_3124(
+        divan::black_box(&values),
+        |a: &f64, b: &f64| a.total_cmp(b),
+    ));
+}
+
+#[divan::bench]
 fn bench_make_round_dicts() {
     let stds = [
         [1.0, 0.25, 0.25, 0.25, 0.25],
@@ -139,6 +154,47 @@ fn bench_build_chance_objects() {
         [1.0, 0.25, 0.25, 0.25, 0.25],
         [1.0, 0.25, 0.25, 0.25, 0.25],
     ];
+    divan::black_box(math::build_chance_objects(
+        divan::black_box(&bets),
+        divan::black_box(&bet_odds),
+        divan::black_box(probabilities),
+    ));
+}
+
+// Full-scale (all 3124 bets) versions of the above, matching the hot path exercised
+// by every Bets/Odds construction over a complete round (see `Odds::new` in src/odds.rs
+// and `NeoFoodClub::make_all_bets` in src/nfc.rs, both of which operate over all 3124
+// possible bet combinations rather than a handful).
+
+#[divan::bench]
+fn bench_expand_ib_object_full() {
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
+    let data = nfc.round_dict_data();
+    let bets: Vec<[u8; 5]> = data
+        .bins
+        .iter()
+        .map(|&bin| math::binary_to_indices(bin))
+        .collect();
+    let bet_odds: Vec<u32> = data.odds.clone();
+
+    divan::black_box(math::expand_ib_object(
+        divan::black_box(&bets),
+        divan::black_box(&bet_odds),
+    ));
+}
+
+#[divan::bench]
+fn bench_build_chance_objects_full() {
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
+    let data = nfc.round_dict_data();
+    let bets: Vec<[u8; 5]> = data
+        .bins
+        .iter()
+        .map(|&bin| math::binary_to_indices(bin))
+        .collect();
+    let bet_odds: Vec<u32> = data.odds.clone();
+    let probabilities = nfc.probabilities();
+
     divan::black_box(math::build_chance_objects(
         divan::black_box(&bets),
         divan::black_box(&bet_odds),
@@ -423,19 +479,19 @@ fn bench_amounts_hash() {
 fn bench_nfc_with_modifier_reverse() {
     let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let modifier = Modifier::new(ModifierFlags::REVERSE.bits(), None, None).unwrap();
-    divan::black_box(nfc.with_modifier(divan::black_box(modifier)));
+    divan::black_box(nfc.with_modifier(divan::black_box(modifier)).unwrap());
 }
 
 #[divan::bench]
 fn bench_nfc_with_modifier_opening_odds() {
     let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let modifier = Modifier::new(ModifierFlags::OPENING_ODDS.bits(), None, None).unwrap();
-    divan::black_box(nfc.with_modifier(divan::black_box(modifier)));
+    divan::black_box(nfc.with_modifier(divan::black_box(modifier)).unwrap());
 }
 
 #[divan::bench]
 fn bench_nfc_with_modifier_charity_corner() {
     let mut nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let modifier = Modifier::new(ModifierFlags::CHARITY_CORNER.bits(), None, None).unwrap();
-    divan::black_box(nfc.with_modifier(divan::black_box(modifier)));
+    divan::black_box(nfc.with_modifier(divan::black_box(modifier)).unwrap());
 }

@@ -10,13 +10,13 @@ use crate::math::{
 };
 use crate::modifier::{Modifier, ModifierFlags};
 use crate::oddschange::OddsChange;
-use crate::round_data::RoundData;
+use crate::round_data::{RoundData, RoundDataRaw};
 use crate::utils::argsort_slice_3124;
 use chrono::{DateTime, Utc};
 use chrono_tz::{OffsetComponents, Tz};
 use itertools::Itertools;
 use rand::seq::IteratorRandom;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
 use crate::models::multinomial_logit::MultinomialLogitModel;
 use crate::models::original::OriginalModel;
@@ -33,21 +33,6 @@ struct UrlAllDataParams<'a> {
     winners: Option<&'a str>,
     #[serde(skip_serializing_if = "Option::is_none")]
     timestamp: Option<&'a str>,
-}
-
-#[allow(non_snake_case)]
-#[derive(Debug, Deserialize)]
-pub(crate) struct RoundDataRaw {
-    // as an intermediate step, we use this struct to deserialize the JSON
-    foods: Option<String>,
-    round: u16,
-    start: Option<String>,
-    pirates: String,
-    openingOdds: String,
-    currentOdds: String,
-    winners: Option<String>,
-    timestamp: Option<String>,
-    lastChange: Option<String>,
 }
 
 /// The probability model to use when calculating bets.
@@ -73,6 +58,8 @@ pub struct NeoFoodClub {
     max_ter_indices: OnceCell<Vec<usize>>,
     net_expected_indices: OnceCell<Vec<f64>>,
     clamped_max_bets: OnceCell<Vec<u32>>,
+    sorted_odds_indices: OnceCell<Vec<usize>>,
+    sorted_probs_indices: OnceCell<Vec<usize>>,
 }
 
 impl NeoFoodClub {
@@ -87,7 +74,7 @@ impl NeoFoodClub {
 
         let use_modifier = modifier.unwrap_or_default();
 
-        use_modifier.apply(&mut round_data);
+        use_modifier.apply(&mut round_data)?;
 
         let mut nfc = NeoFoodClub {
             round_data,
@@ -100,6 +87,8 @@ impl NeoFoodClub {
             max_ter_indices: OnceCell::new(),
             net_expected_indices: OnceCell::new(),
             clamped_max_bets: OnceCell::new(),
+            sorted_odds_indices: OnceCell::new(),
+            sorted_probs_indices: OnceCell::new(),
         };
 
         nfc.set_bet_amount(bet_amount);
@@ -147,12 +136,14 @@ impl NeoFoodClub {
         self.clamped_max_bets = OnceCell::new();
         self.max_ter_indices = OnceCell::new();
         self.net_expected_indices = OnceCell::new();
-        self.round_data.customOdds = None;
+        self.sorted_odds_indices = OnceCell::new();
+        self.sorted_probs_indices = OnceCell::new();
+        self.round_data.custom_odds = None;
     }
 
     /// changes the modifier of this NeoFoodClub object
     /// if the modifier is different enough, we clear the caches
-    pub fn with_modifier(&mut self, modifier: Modifier) -> &mut Self {
+    pub fn with_modifier(&mut self, modifier: Modifier) -> Result<&mut Self, NfcError> {
         let current_modifier = &self.modifier;
 
         if self.modified()
@@ -171,11 +162,11 @@ impl NeoFoodClub {
             self.max_ter_indices = OnceCell::new();
         }
 
-        self.round_data.customOdds = None;
+        self.round_data.custom_odds = None;
 
         self.modifier = modifier;
-        self.modifier.apply(&mut self.round_data);
-        self
+        self.modifier.apply(&mut self.round_data)?;
+        Ok(self)
     }
 
     /// Creates a NeoFoodClub object from a JSON string.
@@ -210,8 +201,7 @@ impl NeoFoodClub {
                 },
             use_modifier.custom_odds,
             use_modifier.custom_time,
-        )
-        .map_err(NfcError::Modifier)?;
+        )?;
 
         let temp: RoundDataRaw =
             serde_qs::from_str(query).map_err(|e| NfcError::QueryString(e.to_string()))?;
@@ -221,13 +211,13 @@ impl NeoFoodClub {
             round: temp.round,
             start: temp.start,
             pirates: serde_json::from_str(&temp.pirates)?,
-            openingOdds: serde_json::from_str(&temp.openingOdds)?,
-            currentOdds: serde_json::from_str(&temp.currentOdds)?,
-            customOdds: None,
+            opening_odds: serde_json::from_str(&temp.opening_odds)?,
+            current_odds: serde_json::from_str(&temp.current_odds)?,
+            custom_odds: None,
             winners: temp.winners.map(|x| serde_json::from_str(&x)).transpose()?,
             timestamp: temp.timestamp,
             changes: None,
-            lastChange: temp.lastChange,
+            last_change: temp.last_change,
         };
 
         NeoFoodClub::new(round_data, bet_amount, model, Some(new_modifier))
@@ -301,7 +291,7 @@ impl NeoFoodClub {
 
     /// Returns the current odds.
     pub fn current_odds(&self) -> &[[u8; 5]; 5] {
-        &self.round_data.currentOdds
+        &self.round_data.current_odds
     }
 
     /// Returns the custom odds.
@@ -309,12 +299,12 @@ impl NeoFoodClub {
     /// Custom odds is just the resolved changes of a Modifier.
     /// Effectively, this is what we use for calculations.
     pub fn custom_odds(&self) -> [[u8; 5]; 5] {
-        self.round_data.customOdds.unwrap_or(*self.current_odds())
+        self.round_data.custom_odds.unwrap_or(*self.current_odds())
     }
 
     /// Returns the opening odds.
     pub fn opening_odds(&self) -> [[u8; 5]; 5] {
-        self.round_data.openingOdds
+        self.round_data.opening_odds
     }
 
     /// Returns the timestamp of the round in ISO 8601 format as a string.
@@ -348,7 +338,7 @@ impl NeoFoodClub {
     /// Returns the last change of the round in ISO 8601 format as a string.
     /// If the last change is not available, returns None.
     pub fn last_change(&self) -> &Option<String> {
-        &self.round_data.lastChange
+        &self.round_data.last_change
     }
 
     /// Returns the last change of the round in NST.
@@ -478,32 +468,34 @@ impl NeoFoodClub {
     /// If `descending` is true, returns highest to lowest.
     /// If `descending` is false, returns lowest to highest.
     fn get_sorted_odds_indices(&self, descending: bool, amount: usize) -> Vec<usize> {
-        let data = self.round_dict_data();
-        let odds = &data.odds;
+        let indices = self.sorted_odds_indices.get_or_init(|| {
+            let data = self.round_dict_data();
+            argsort_slice_3124(&data.odds, |a: &u32, b: &u32| a.cmp(b))
+        });
 
-        let mut indices = argsort_slice_3124(odds, |a: &u32, b: &u32| a.cmp(b));
-
+        let mut result = indices.clone();
         if descending {
-            indices.reverse();
+            result.reverse();
         }
-
-        indices.into_iter().take(amount).collect()
+        result.truncate(amount);
+        result
     }
 
     /// Returns sorted indices of probabilities
     /// If `descending` is true, returns highest to lowest.
     /// If `descending` is false, returns lowest to highest.
     fn get_sorted_probs_indices(&self, descending: bool, amount: usize) -> Vec<usize> {
-        let data = self.round_dict_data();
-        let probs = &data.probs;
+        let indices = self.sorted_probs_indices.get_or_init(|| {
+            let data = self.round_dict_data();
+            argsort_slice_3124(&data.probs, |a: &f64, b: &f64| a.total_cmp(b))
+        });
 
-        let mut indices = argsort_slice_3124(probs, |a: &f64, b: &f64| a.total_cmp(b));
-
+        let mut result = indices.clone();
         if descending {
-            indices.reverse();
+            result.reverse();
         }
-
-        indices.into_iter().take(amount).collect()
+        result.truncate(amount);
+        result
     }
 
     /// Return the binary representation of the highest expected return full-arena bet.
@@ -515,7 +507,7 @@ impl NeoFoodClub {
             .iter()
             .copied()
             .find(|&index| data.bins[index].count_ones() == 5)
-            .unwrap();
+            .expect("round data always contains at least one full-arena bet");
 
         data.bins[index]
     }
@@ -756,10 +748,12 @@ impl NeoFoodClub {
     /// Returns an error if the amount of pirates is invalid.
     /// Returns an error if the amount of pirates is greater than 3.
     /// Returns an error if the amount of pirates is less than 1.
-    pub fn make_tenbet_bets(&self, pirates_binary: u32) -> Result<Bets, String> {
+    pub fn make_tenbet_bets(&self, pirates_binary: u32) -> Result<Bets, NfcError> {
         for mask in BIT_MASKS.iter() {
             if (pirates_binary & mask).count_ones() > 1 {
-                return Err("You can only pick 1 pirate per arena.".to_string());
+                return Err(NfcError::InvalidBet(
+                    "You can only pick 1 pirate per arena.".to_string(),
+                ));
             }
         }
 
@@ -769,9 +763,17 @@ impl NeoFoodClub {
             .sum();
 
         match amount_of_pirates {
-            0 => return Err("You must pick at least 1 pirate, and at most 3.".to_string()),
+            0 => {
+                return Err(NfcError::InvalidBet(
+                    "You must pick at least 1 pirate, and at most 3.".to_string(),
+                ))
+            }
             1..=3 => (),
-            _ => return Err("You must pick 3 pirates at most.".to_string()),
+            _ => {
+                return Err(NfcError::InvalidBet(
+                    "You must pick 3 pirates at most.".to_string(),
+                ))
+            }
         }
 
         let data = self.round_dict_data();
@@ -791,7 +793,7 @@ impl NeoFoodClub {
     }
 
     /// Creates a Bets object translated from a bets hash.
-    pub fn make_bets_from_hash(&self, hash: &str) -> Result<Bets, String> {
+    pub fn make_bets_from_hash(&self, hash: &str) -> Result<Bets, NfcError> {
         let mut bets = Bets::from_hash(self, hash)?;
 
         bets.fill_bet_amounts(self);
@@ -918,9 +920,9 @@ impl NeoFoodClub {
         if all_data {
             let pirates = serde_json::to_string(&self.round_data.pirates)
                 .expect("Failed to serialize pirates.");
-            let opening_odds = serde_json::to_string(&self.round_data.openingOdds)
+            let opening_odds = serde_json::to_string(&self.round_data.opening_odds)
                 .expect("Failed to serialize openingOdds.");
-            let current_odds = serde_json::to_string(&self.round_data.currentOdds)
+            let current_odds = serde_json::to_string(&self.round_data.current_odds)
                 .expect("Failed to serialize currentOdds.");
             let winners = if self.is_over() {
                 Some(serde_json::to_string(&self.winners()).expect("Failed to serialize winners."))
@@ -949,7 +951,7 @@ impl NeoFoodClub {
     /// If `modifier` is None, the modifier is going to be empty.
     pub fn copy(&self, model: Option<ProbabilityModel>, modifier: Option<Modifier>) -> NeoFoodClub {
         let mut round_data = self.round_data.clone();
-        round_data.customOdds = None;
+        round_data.custom_odds = None;
         NeoFoodClub::new(round_data, self.bet_amount, model, modifier)
             .expect("copy of already-validated NeoFoodClub produced invalid data")
     }
@@ -978,35 +980,21 @@ fn validate_round_data(round_data: &RoundData) -> Result<(), NfcError> {
         }
     }
 
-    for arena in round_data.currentOdds.iter() {
-        for (index, odds) in arena.iter().enumerate() {
-            if index == 0 {
-                if *odds != 1 {
-                    return Err(NfcError::RoundData(
-                        "First integer in each arena in currentOdds must be 1.".to_string(),
-                    ));
-                }
-            } else if *odds < 2 || *odds > 13 {
-                return Err(NfcError::RoundData(
-                    "Odds must be between 2 and 13.".to_string(),
-                ));
-            }
-        }
-    }
+    validate_odds_arena(&round_data.current_odds)?;
+    validate_odds_arena(&round_data.opening_odds)?;
 
-    for arena in round_data.openingOdds.iter() {
-        for (index, odds) in arena.iter().enumerate() {
-            if index == 0 {
-                if *odds != 1 {
-                    return Err(NfcError::RoundData(
-                        "First integer in each arena in openingOdds must be 1.".to_string(),
-                    ));
-                }
-            } else if *odds < 2 || *odds > 13 {
-                return Err(NfcError::RoundData(
-                    "Odds must be between 2 and 13.".to_string(),
-                ));
-            }
+    if let Some(start) = &round_data.start {
+        crate::round_data::validate_timestamp(start)?;
+    }
+    if let Some(timestamp) = &round_data.timestamp {
+        crate::round_data::validate_timestamp(timestamp)?;
+    }
+    if let Some(last_change) = &round_data.last_change {
+        crate::round_data::validate_timestamp(last_change)?;
+    }
+    if let Some(changes) = &round_data.changes {
+        for change in changes.iter() {
+            crate::round_data::validate_timestamp(&change.t)?;
         }
     }
 
@@ -1030,6 +1018,26 @@ fn validate_round_data(round_data: &RoundData) -> Result<(), NfcError> {
             return Err(NfcError::RoundData(
                 "Winners must either be all 0, or all 1-4.".to_string(),
             ));
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_odds_arena(odds: &[[u8; 5]; 5]) -> Result<(), NfcError> {
+    for arena in odds.iter() {
+        for (index, odd) in arena.iter().enumerate() {
+            if index == 0 {
+                if *odd != 1 {
+                    return Err(NfcError::RoundData(
+                        "First integer in each arena in odds must be 1.".to_string(),
+                    ));
+                }
+            } else if *odd < 2 || *odd > 13 {
+                return Err(NfcError::RoundData(
+                    "Odds must be between 2 and 13.".to_string(),
+                ));
+            }
         }
     }
 

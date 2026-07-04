@@ -47,15 +47,21 @@ impl Modifier {
         value: i32,
         custom_odds: Option<HashMap<u8, u8>>,
         custom_time: Option<NaiveTime>,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, crate::error::NfcError> {
         // loop through custom_odds if it's not None and check if the keys are between 1-20 and the values are between 2-13
         if let Some(custom_odds) = custom_odds.as_ref() {
             for (key, value) in custom_odds.iter() {
                 if *key < 1 || *key > 20 {
-                    return Err(format!("Invalid pirate ID, need 1-20, got {}", *key));
+                    return Err(crate::error::NfcError::Modifier(format!(
+                        "Invalid pirate ID, need 1-20, got {}",
+                        *key
+                    )));
                 }
                 if *value < 2 || *value > 13 {
-                    return Err(format!("Invalid odds, need 2-13, got {}", *value));
+                    return Err(crate::error::NfcError::Modifier(format!(
+                        "Invalid odds, need 2-13, got {}",
+                        *value
+                    )));
                 }
             }
         }
@@ -102,10 +108,10 @@ impl Modifier {
 
 impl Modifier {
     /// Applies the modifier to the round data and returns a new round data object.
-    pub fn apply(&self, round_data: &mut RoundData) {
+    pub fn apply(&self, round_data: &mut RoundData) -> Result<(), crate::error::NfcError> {
         // first, apply opening odds to current odds if necessary
         if self.is_opening_odds() {
-            round_data.customOdds = Some(round_data.openingOdds);
+            round_data.custom_odds = Some(round_data.opening_odds);
         }
 
         // apply custom time if necessary
@@ -113,13 +119,22 @@ impl Modifier {
         if let Some(start_time_as_nst) = &round_data.start_nst() {
             if let Some(custom_time) = &self.custom_time {
                 if let Some(changes) = &round_data.changes {
-                    let mut temp_odds = round_data.openingOdds; // as a starting point
+                    let mut temp_odds = round_data.opening_odds; // as a starting point
 
-                    let mut custom_time = start_time_as_nst
+                    let mut custom_time = match start_time_as_nst
                         .date_naive()
                         .and_time(*custom_time)
                         .and_local_timezone(Pacific)
-                        .unwrap();
+                        .single()
+                    {
+                        Some(custom_time) => custom_time,
+                        None => {
+                            return Err(crate::error::NfcError::Modifier(format!(
+                                "custom time {} is ambiguous or invalid due to a DST transition",
+                                custom_time
+                            )));
+                        }
+                    };
 
                     // if the custom time is before the start time, we need to add a day
                     if custom_time < *start_time_as_nst {
@@ -142,14 +157,14 @@ impl Modifier {
                         round_data.changes = None;
                     }
 
-                    round_data.customOdds = Some(temp_odds);
+                    round_data.custom_odds = Some(temp_odds);
                 }
             }
         }
 
         // then, apply custom odds if necessary
         if let Some(custom_odds) = &self.custom_odds {
-            let mut temp_odds = round_data.customOdds.unwrap_or(round_data.currentOdds);
+            let mut temp_odds = round_data.custom_odds.unwrap_or(round_data.current_odds);
             round_data
                 .pirates
                 .iter()
@@ -162,16 +177,9 @@ impl Modifier {
                     });
                 });
 
-            round_data.customOdds = Some(temp_odds);
+            round_data.custom_odds = Some(temp_odds);
         }
-    }
 
-    /// Returns a deep copy of the modifier.
-    pub fn copy(&self) -> Self {
-        Self {
-            value: self.value,
-            custom_odds: self.custom_odds.clone(),
-            custom_time: self.custom_time,
-        }
+        Ok(())
     }
 }

@@ -6,7 +6,7 @@ pub struct OriginalModel;
 impl OriginalModel {
     #[allow(clippy::new_ret_no_self)]
     pub fn new(round_data: &RoundData) -> [[f64; 5]; 5] {
-        make_probabilities(round_data.openingOdds)
+        make_probabilities(round_data.opening_odds)
     }
 }
 
@@ -100,4 +100,96 @@ pub fn make_probabilities(odds: [[u8; 5]; 5]) -> [[f64; 5]; 5] {
     }
 
     std
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const EPSILON: f64 = 1e-9;
+
+    // Real-world fixture odds (round 8765), reused from tests/integration_test.rs.
+    const OPENING_ODDS: [[u8; 5]; 5] = [
+        [1, 11, 3, 2, 4],
+        [1, 13, 2, 5, 13],
+        [1, 13, 2, 5, 2],
+        [1, 2, 8, 5, 5],
+        [1, 13, 3, 2, 4],
+    ];
+
+    const CURRENT_ODDS: [[u8; 5]; 5] = [
+        [1, 11, 3, 2, 3],
+        [1, 13, 2, 7, 13],
+        [1, 13, 2, 4, 2],
+        [1, 2, 10, 6, 6],
+        [1, 13, 4, 2, 4],
+    ];
+
+    #[test]
+    fn test_make_probabilities_bounds_opening_odds() {
+        let probs = make_probabilities(OPENING_ODDS);
+        for arena in probs.iter() {
+            for &p in arena[1..5].iter() {
+                assert!((0.0..=1.0).contains(&p), "probability out of bounds: {p}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_make_probabilities_bounds_current_odds() {
+        let probs = make_probabilities(CURRENT_ODDS);
+        for arena in probs.iter() {
+            for &p in arena[1..5].iter() {
+                assert!((0.0..=1.0).contains(&p), "probability out of bounds: {p}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_make_probabilities_sums_to_one_opening_odds() {
+        let probs = make_probabilities(OPENING_ODDS);
+        for arena in probs.iter() {
+            let sum: f64 = arena[1..5].iter().sum();
+            assert!(
+                (sum - 1.0).abs() < EPSILON,
+                "arena probabilities did not sum to 1.0: {sum}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_make_probabilities_sums_to_one_current_odds() {
+        let probs = make_probabilities(CURRENT_ODDS);
+        for arena in probs.iter() {
+            let sum: f64 = arena[1..5].iter().sum();
+            assert!(
+                (sum - 1.0).abs() < EPSILON,
+                "arena probabilities did not sum to 1.0: {sum}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_make_probabilities_first_column_is_always_one() {
+        // index 0 in each arena's row is a fixed placeholder (unused pirate slot)
+        let probs = make_probabilities(OPENING_ODDS);
+        for arena in probs.iter() {
+            assert_eq!(arena[0], 1.0);
+        }
+    }
+
+    #[test]
+    fn test_original_model_new_matches_make_probabilities() {
+        use crate::round_data::RoundData;
+
+        let round_data: RoundData = serde_json::from_str(
+            r#"{"foods":null,"round":8765,"start":null,"pirates":[[6,11,4,3],[14,15,2,9],[10,16,18,20],[1,12,13,5],[8,19,17,7]],"currentOdds":[[1,11,3,2,3],[1,13,2,7,13],[1,13,2,4,2],[1,2,10,6,6],[1,13,4,2,4]],"customOdds":null,"openingOdds":[[1,11,3,2,4],[1,13,2,5,13],[1,13,2,5,2],[1,2,8,5,5],[1,13,3,2,4]],"winners":null,"timestamp":null,"changes":null,"lastChange":null}"#,
+        )
+        .unwrap();
+
+        let from_model = OriginalModel::new(&round_data);
+        let expected = make_probabilities(round_data.opening_odds);
+
+        assert_eq!(from_model, expected);
+    }
 }

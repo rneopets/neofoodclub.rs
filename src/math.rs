@@ -1,9 +1,9 @@
-use std::collections::HashMap;
-
 use itertools::Itertools;
 use rand::RngExt;
+use rustc_hash::FxHashMap as HashMap;
 
 use crate::chance::Chance;
+use crate::error::NfcError;
 
 pub const BET_AMOUNT_MIN: u32 = 1;
 pub const BET_AMOUNT_MAX: u32 = 70304;
@@ -94,27 +94,27 @@ pub fn binary_to_index(binary: u32) -> usize {
 }
 
 #[inline]
-pub fn bets_hash_check(bets_hash: &str) -> Result<(), String> {
+pub fn bets_hash_check(bets_hash: &str) -> Result<(), NfcError> {
     if !bets_hash
         .as_bytes()
         .iter()
         .all(|&b| matches!(b, b'a'..=b'y'))
     {
-        return Err(format!(
+        return Err(NfcError::BetsHash(format!(
             "Invalid bet hash '{}'. Must contain only characters a-y.",
             bets_hash
-        ));
+        )));
     }
     Ok(())
 }
 
 #[inline]
-pub fn amounts_hash_check(amounts_hash: &str) -> Result<(), String> {
+pub fn amounts_hash_check(amounts_hash: &str) -> Result<(), NfcError> {
     if !amounts_hash.len().is_multiple_of(3) {
-        return Err(format!(
+        return Err(NfcError::AmountsHash(format!(
             "Invalid amounts hash '{}'. Length must be a multiple of 3.",
             amounts_hash
-        ));
+        )));
     }
 
     if !amounts_hash
@@ -122,10 +122,10 @@ pub fn amounts_hash_check(amounts_hash: &str) -> Result<(), String> {
         .iter()
         .all(|&b| b.is_ascii_alphabetic())
     {
-        return Err(format!(
+        return Err(NfcError::AmountsHash(format!(
             "Invalid amounts hash '{}'. Must contain only characters a-z and A-Z.",
             amounts_hash
-        ));
+        )));
     }
 
     Ok(())
@@ -182,7 +182,7 @@ fn nonzero_chunks(raw: &[u8]) -> impl Iterator<Item = [u8; 5]> + '_ {
 /// assert_eq!(bin, [[1, 4, 2, 2, 0], [1, 0, 2, 2, 4], [0, 4, 2, 2, 4], [4, 0, 2, 2, 4], [0, 1, 2, 2, 0], [1, 1, 2, 2, 4], [1, 0, 2, 2, 0], [3, 0, 2, 2, 4], [0, 0, 2, 2, 4], [4, 0, 2, 2, 0]]);
 /// ```
 #[inline]
-pub fn bets_hash_to_bet_indices(bets_hash: &str) -> Result<Vec<[u8; 5]>, String> {
+pub fn bets_hash_to_bet_indices(bets_hash: &str) -> Result<Vec<[u8; 5]>, NfcError> {
     bets_hash_check(bets_hash)?;
     Ok(nonzero_chunks(&decode_hash_raw(bets_hash)).collect())
 }
@@ -202,7 +202,7 @@ pub fn bets_hash_to_bet_indices(bets_hash: &str) -> Result<Vec<[u8; 5]>, String>
 /// assert_eq!(count, 15);
 /// ```
 #[inline]
-pub fn bets_hash_to_bets_count(bets_hash: &str) -> Result<usize, String> {
+pub fn bets_hash_to_bets_count(bets_hash: &str) -> Result<usize, NfcError> {
     bets_hash_check(bets_hash)?;
     Ok(nonzero_chunks(&decode_hash_raw(bets_hash)).count())
 }
@@ -255,7 +255,7 @@ pub fn bet_amounts_to_amounts_hash(bet_amounts: &[Option<u32>]) -> String {
 /// assert_eq!(amounts, vec![Some(11463), Some(6172), Some(6172), Some(5731), Some(10030), Some(8024), Some(13374), Some(4000), Some(3500), None]);
 /// ```
 #[inline]
-pub fn amounts_hash_to_bet_amounts(amounts_hash: &str) -> Result<Vec<Option<u32>>, String> {
+pub fn amounts_hash_to_bet_amounts(amounts_hash: &str) -> Result<Vec<Option<u32>>, NfcError> {
     #[inline]
     fn decode_index(byte: u8) -> u32 {
         match byte {
@@ -311,7 +311,7 @@ pub fn amounts_hash_to_bet_amounts(amounts_hash: &str) -> Result<Vec<Option<u32>
 /// assert_eq!(bins, vec![0x48212, 0x81828, 0x14888, 0x24484, 0x28211, 0x82442, 0x11142, 0x41418, 0x82811, 0x44242]);
 ///```
 #[inline]
-pub fn bets_hash_to_bet_binaries(bets_hash: &str) -> Result<Vec<u32>, String> {
+pub fn bets_hash_to_bet_binaries(bets_hash: &str) -> Result<Vec<u32>, NfcError> {
     bets_hash_check(bets_hash)?;
     Ok(bets_hash_to_bet_indices(bets_hash)?
         .iter()
@@ -384,11 +384,12 @@ fn ib_prob(binary: u32, probabilities: &[[f64; 5]; 5]) -> f64 {
         })
 }
 
-pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32> {
+pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> std::collections::HashMap<u32, u32> {
     // makes a dict of permutations of the pirates + odds
     // this is why the bet table could be very long
 
-    let mut bets_to_ib: HashMap<u32, u32> = HashMap::with_capacity(bets.len());
+    let mut bets_to_ib: HashMap<u32, u32> =
+        HashMap::with_capacity_and_hasher(bets.len(), Default::default());
     for (key, bet_value) in bets.iter().enumerate() {
         let ib = bet_value
             .iter()
@@ -398,7 +399,7 @@ pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32>
     }
 
     // filters down the doable bets from the permutations above
-    let mut res: HashMap<u32, u32> = HashMap::new();
+    let mut res: HashMap<u32, u32> = HashMap::default();
     res.insert(0xFFFFF, 0);
     let mut bets_to_ib: Vec<_> = bets_to_ib.into_iter().collect();
     bets_to_ib.sort_unstable();
@@ -426,7 +427,7 @@ pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32>
             }
         }
     }
-    res
+    res.into_iter().collect()
 }
 
 #[derive(Debug, Clone)]
@@ -498,7 +499,7 @@ pub fn build_chance_objects(
     probabilities: [[f64; 5]; 5],
 ) -> Vec<Chance> {
     let expanded = expand_ib_object(bets, bet_odds);
-    let mut win_table: HashMap<u32, f64> = HashMap::new();
+    let mut win_table: HashMap<u32, f64> = HashMap::default();
     for (key, value) in expanded.iter() {
         *win_table.entry(*value).or_insert(0.0) += ib_prob(*key, &probabilities);
     }
@@ -539,8 +540,8 @@ mod tests {
     fn amounts_hash_check_rejects_length_not_multiple_of_three() {
         let err = amounts_hash_check("Aa").unwrap_err();
         assert_eq!(
-            err,
-            "Invalid amounts hash 'Aa'. Length must be a multiple of 3."
+            err.to_string(),
+            "Invalid amounts hash: Invalid amounts hash 'Aa'. Length must be a multiple of 3."
         );
     }
 
@@ -548,8 +549,8 @@ mod tests {
     fn amounts_hash_check_rejects_non_alphabetic_characters() {
         let err = amounts_hash_check("Aa1").unwrap_err();
         assert_eq!(
-            err,
-            "Invalid amounts hash 'Aa1'. Must contain only characters a-z and A-Z."
+            err.to_string(),
+            "Invalid amounts hash: Invalid amounts hash 'Aa1'. Must contain only characters a-z and A-Z."
         );
     }
 }

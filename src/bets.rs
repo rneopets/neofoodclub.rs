@@ -2,6 +2,7 @@ use comfy_table::Table;
 
 use crate::{
     arena::ARENA_NAMES,
+    error::NfcError,
     math::{
         amounts_hash_to_bet_amounts, bet_amounts_to_amounts_hash, bets_hash_to_bet_binaries,
         bets_hash_value, binary_to_index, binary_to_indices, pirates_binary, BET_AMOUNT_MAX,
@@ -29,7 +30,7 @@ impl BetAmounts {
     /// Returns the bet amounts as a vector of Option<u32>
     /// If the BetAmounts is None, returns None
     /// For AllSame, this requires the length parameter
-    pub fn to_vec(&self, length: usize) -> Result<Option<Vec<Option<u32>>>, String> {
+    pub fn to_vec(&self, length: usize) -> Result<Option<Vec<Option<u32>>>, NfcError> {
         match self {
             BetAmounts::AmountHash(hash) => {
                 let amounts = amounts_hash_to_bet_amounts(hash)?;
@@ -60,11 +61,11 @@ impl BetAmounts {
 
     /// Creates a new BetAmounts from a vector of optional bet amounts
     fn clean_amounts(amounts: &[Option<u32>]) -> Vec<Option<u32>> {
-        let mut cleaned = amounts.to_owned();
-        while cleaned.last() == Some(&None) {
-            cleaned.pop();
-        }
-        cleaned
+        let end = amounts
+            .iter()
+            .rposition(Option::is_some)
+            .map_or(0, |i| i + 1);
+        amounts[..end].to_vec()
     }
 }
 
@@ -100,7 +101,7 @@ impl Bets {
         nfc: &NeoFoodClub,
         indices: Vec<usize>,
         amounts: BetAmounts,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, NfcError> {
         let mut bets = Self::new(nfc, indices);
         bets.set_bet_amounts(&Some(amounts))?;
         Ok(bets)
@@ -121,7 +122,7 @@ impl Bets {
     /// Sets the bet amounts for the bets
     /// Returns an error if the amounts length doesn't match the bet count
     /// (except for AllSame which always works)
-    pub fn set_bet_amounts(&mut self, amounts: &Option<BetAmounts>) -> Result<(), String> {
+    pub fn set_bet_amounts(&mut self, amounts: &Option<BetAmounts>) -> Result<(), NfcError> {
         let Some(betamount) = amounts else {
             self.bet_amounts = None;
             return Ok(());
@@ -136,10 +137,10 @@ impl Bets {
         // For other variants, check length
         if !matches!(betamount, BetAmounts::AllSame(_)) && amounts.len() != self.array_indices.len()
         {
-            return Err(format!(
+            return Err(NfcError::BetAmount(format!(
                 "Bet amounts must be the same length as bet indices, or None. Provided: {} Expected: {}",
                 amounts.len(), self.array_indices.len()
-            ));
+            )));
         }
 
         self.bet_amounts = Some(
@@ -234,7 +235,7 @@ impl Bets {
     }
 
     /// Creates a new Bets struct from a hash
-    pub fn from_hash(nfc: &NeoFoodClub, hash: &str) -> Result<Self, String> {
+    pub fn from_hash(nfc: &NeoFoodClub, hash: &str) -> Result<Self, NfcError> {
         let binaries = bets_hash_to_bet_binaries(hash)?;
 
         Ok(Self::from_binaries(nfc, binaries))

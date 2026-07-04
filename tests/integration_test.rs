@@ -2531,6 +2531,30 @@ mod panic_tests {
     }
 
     #[test]
+    fn test_validate_timestamp_field_malformed() {
+        let mut round_data = get_valid_round_data();
+        round_data.timestamp = Some("not-a-timestamp".to_string());
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("invalid timestamp"));
+    }
+
+    #[test]
+    fn test_validate_last_change_timestamp_malformed() {
+        let mut round_data = get_valid_round_data();
+        round_data.last_change = Some("not-a-timestamp".to_string());
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("invalid timestamp"));
+    }
+
+    #[test]
     fn test_modifier_apply_dst_ambiguous_custom_time_returns_err() {
         let mut round_data = get_valid_round_data();
         // 2026-03-08T20:00:00+00:00 is 2026-03-08 (noon) in Pacific time, the date of

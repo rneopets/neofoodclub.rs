@@ -161,6 +161,47 @@ fn bench_build_chance_objects() {
     ));
 }
 
+// Full-scale (all 3124 bets) versions of the above, matching the hot path exercised
+// by every Bets/Odds construction over a complete round (see `Odds::new` in src/odds.rs
+// and `NeoFoodClub::make_all_bets` in src/nfc.rs, both of which operate over all 3124
+// possible bet combinations rather than a handful).
+
+#[divan::bench]
+fn bench_expand_ib_object_full() {
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
+    let data = nfc.round_dict_data();
+    let bets: Vec<[u8; 5]> = data
+        .bins
+        .iter()
+        .map(|&bin| math::binary_to_indices(bin))
+        .collect();
+    let bet_odds: Vec<u32> = data.odds.clone();
+
+    divan::black_box(math::expand_ib_object(
+        divan::black_box(&bets),
+        divan::black_box(&bet_odds),
+    ));
+}
+
+#[divan::bench]
+fn bench_build_chance_objects_full() {
+    let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
+    let data = nfc.round_dict_data();
+    let bets: Vec<[u8; 5]> = data
+        .bins
+        .iter()
+        .map(|&bin| math::binary_to_indices(bin))
+        .collect();
+    let bet_odds: Vec<u32> = data.odds.clone();
+    let probabilities = nfc.probabilities();
+
+    divan::black_box(math::build_chance_objects(
+        divan::black_box(&bets),
+        divan::black_box(&bet_odds),
+        divan::black_box(probabilities),
+    ));
+}
+
 // NeoFoodClub operation benchmarks
 
 #[divan::bench]

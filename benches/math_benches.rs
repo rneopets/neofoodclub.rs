@@ -1,6 +1,7 @@
 use neofoodclub::math;
 use neofoodclub::modifier::{Modifier, ModifierFlags};
 use neofoodclub::nfc::{NeoFoodClub, ProbabilityModel};
+use neofoodclub::utils::argsort_slice_3124;
 
 fn main() {
     divan::main();
@@ -103,6 +104,20 @@ fn bench_expand_ib_object() {
     divan::black_box(math::expand_ib_object(
         divan::black_box(&bets),
         divan::black_box(&bet_odds),
+    ));
+}
+
+#[divan::bench]
+fn bench_argsort_slice_3124() {
+    // mimics real usage in nfc.rs, e.g. sorting expected-return-per-shot (ers)
+    // or probabilities, which are always exactly 3124 elements long
+    // (one entry per possible bet combination).
+    let values: Vec<f64> = (0..3124usize)
+        .map(|i| ((i.wrapping_mul(2654435761)) % 3124) as f64 / 3124.0)
+        .collect();
+    divan::black_box(argsort_slice_3124(
+        divan::black_box(&values),
+        |a: &f64, b: &f64| a.total_cmp(b),
     ));
 }
 

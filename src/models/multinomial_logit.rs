@@ -186,3 +186,60 @@ static LOGIT_IS_POS4: [f64; 20] = [
     0.7538567262883,
     0.9079073224460276,
 ];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::round_data::RoundData;
+
+    const EPSILON: f64 = 1e-9;
+
+    // Real-world fixture round data (round 8765), reused from tests/integration_test.rs.
+    const ROUND_DATA_JSON: &str = r#"{"foods":[[5,20,24,21,18,7,34,29,38,8],[26,24,20,36,33,40,5,13,8,25],[5,29,22,31,40,27,30,4,8,19],[35,19,36,5,12,37,6,3,29,30],[28,24,36,17,18,9,1,33,19,3]],"round":8765,"start":"2023-05-05T23:14:57+00:00","changes":null,"pirates":[[6,11,4,3],[14,15,2,9],[10,16,18,20],[1,12,13,5],[8,19,17,7]],"winners":null,"timestamp":"2023-05-06T23:14:20+00:00","lastChange":"2023-05-06T19:21:01+00:00","currentOdds":[[1,11,3,2,3],[1,13,2,7,13],[1,13,2,4,2],[1,2,10,6,6],[1,13,4,2,4]],"customOdds":null,"openingOdds":[[1,11,3,2,4],[1,13,2,5,13],[1,13,2,5,2],[1,2,8,5,5],[1,13,3,2,4]]}"#;
+
+    fn make_arenas() -> Arenas {
+        let round_data: RoundData = serde_json::from_str(ROUND_DATA_JSON).unwrap();
+        Arenas::new(&round_data)
+    }
+
+    #[test]
+    fn test_make_probabilities_bounds() {
+        let arenas = make_arenas();
+        let probs = make_probabilities(&arenas);
+        for arena in probs.iter() {
+            for &p in arena[1..5].iter() {
+                assert!((0.0..=1.0).contains(&p), "probability out of bounds: {p}");
+            }
+        }
+    }
+
+    #[test]
+    fn test_make_probabilities_sums_to_one_per_arena() {
+        let arenas = make_arenas();
+        let probs = make_probabilities(&arenas);
+        for arena in probs.iter() {
+            let sum: f64 = arena[1..5].iter().sum();
+            assert!(
+                (sum - 1.0).abs() < EPSILON,
+                "arena probabilities did not sum to 1.0: {sum}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_multinomial_logit_model_new_matches_make_probabilities() {
+        let arenas = make_arenas();
+        let from_model = MultinomialLogitModel::new(&arenas);
+        let expected = make_probabilities(&arenas);
+        assert_eq!(from_model, expected);
+    }
+
+    #[test]
+    fn test_make_probabilities_first_column_is_always_one() {
+        let arenas = make_arenas();
+        let probs = make_probabilities(&arenas);
+        for arena in probs.iter() {
+            assert_eq!(arena[0], 1.0);
+        }
+    }
+}

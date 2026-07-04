@@ -2503,5 +2503,51 @@ mod panic_tests {
             .to_string()
             .contains("Winners must either be all 0, or all 1-4."));
     }
+
+    #[test]
+    fn test_validate_start_timestamp_malformed() {
+        let mut round_data = get_valid_round_data();
+        round_data.start = Some("not-a-timestamp".to_string());
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("invalid timestamp"));
+    }
+
+    #[test]
+    fn test_validate_changes_timestamp_malformed() {
+        let mut round_data = get_valid_round_data();
+        let mut changes = round_data.changes.clone().unwrap();
+        changes[0].t = "not-a-timestamp".to_string();
+        round_data.changes = Some(changes);
+        let result = NeoFoodClub::new(round_data, None, None, None);
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("invalid timestamp"));
+    }
+
+    #[test]
+    fn test_modifier_apply_dst_ambiguous_custom_time_returns_err() {
+        let mut round_data = get_valid_round_data();
+        // 2026-03-08T20:00:00+00:00 is 2026-03-08 (noon) in Pacific time, the date of
+        // that year's spring-forward DST transition, so 02:30 local time never occurs.
+        round_data.start = Some("2026-03-08T20:00:00+00:00".to_string());
+        let modifier = Modifier::new(
+            0,
+            None,
+            Some(chrono::NaiveTime::from_hms_opt(2, 30, 0).unwrap()),
+        )
+        .unwrap();
+        let result = NeoFoodClub::new(round_data, None, None, Some(modifier));
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("ambiguous or invalid due to a DST transition"));
+    }
     // endregion
 }

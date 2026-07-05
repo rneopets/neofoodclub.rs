@@ -17,6 +17,9 @@ env:
   CARGO_NET_RETRY: 10
   CARGO_TERM_COLOR: always
   RUSTUP_MAX_RETRIES: 10
+  # The crate uses pyo3's stable ABI (abi3-py311), so one wheel per target
+  # covers every supported Python version - build with the floor version.
+  BUILD_PYTHON_VERSION: "3.11"
 
 jobs:
   macos:
@@ -24,7 +27,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: &python-versions ["3.11", "3.12", "3.13", "3.14"]
         target: [x86_64, universal2-apple-darwin]
     steps:
       - &checkout-step
@@ -44,20 +46,21 @@ jobs:
           grep -m1 '^version' crates/python/Cargo.toml
         env:
           TAG_NAME: ${{ github.event.release.tag_name }}
-      - uses: astral-sh/setup-uv@v8.3.0
+      - &setup-uv-step
+        uses: astral-sh/setup-uv@v8.3.0
         with:
           enable-cache: false
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.BUILD_PYTHON_VERSION }}
       - name: "Build wheels - macOS"
         uses: PyO3/maturin-action@v1
         with:
           working-directory: crates/python
           target: ${{ matrix.target }}
-          args: --release -i python${{ matrix.python-version }} --out dist
+          args: --release -i python${{ env.BUILD_PYTHON_VERSION }} --out dist
       - name: Upload wheels
         uses: actions/upload-artifact@v7
         with:
-          name: wheels-macos-${{ matrix.target }}-${{ matrix.python-version }}
+          name: wheels-macos-${{ matrix.target }}
           path: crates/python/dist
 
   linux:
@@ -65,7 +68,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: *python-versions
         platform:
           - target: x86_64-unknown-linux-gnu
           - target: i686-unknown-linux-gnu
@@ -77,10 +79,7 @@ jobs:
     steps:
       - *checkout-step
       - *set-version-step
-      - uses: astral-sh/setup-uv@v8.3.0
-        with:
-          enable-cache: false
-          python-version: ${{ matrix.python-version }}
+      - *setup-uv-step
       - name: "Build wheels - Linux"
         uses: PyO3/maturin-action@v1
         with:
@@ -88,11 +87,11 @@ jobs:
           target: ${{ matrix.platform.target }}
           manylinux: auto
           docker-options: ${{ matrix.platform.maturin_docker_options }}
-          args: --release -i python${{ matrix.python-version }} -o dist
+          args: --release -i python${{ env.BUILD_PYTHON_VERSION }} -o dist
       - name: Upload wheels
         uses: actions/upload-artifact@v7
         with:
-          name: wheels-linux-${{ matrix.python-version }}-${{ matrix.platform.target }}
+          name: wheels-linux-${{ matrix.platform.target }}
           path: crates/python/dist
 
   musllinux:
@@ -100,7 +99,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: *python-versions
         platform:
           - target: x86_64-unknown-linux-musl
           - target: i686-unknown-linux-musl
@@ -110,10 +108,7 @@ jobs:
     steps:
       - *checkout-step
       - *set-version-step
-      - uses: astral-sh/setup-uv@v8.3.0
-        with:
-          enable-cache: false
-          python-version: ${{ matrix.python-version }}
+      - *setup-uv-step
       - name: "Build wheels - musllinux"
         uses: PyO3/maturin-action@v1
         with:
@@ -121,11 +116,11 @@ jobs:
           target: ${{ matrix.platform.target }}
           manylinux: musllinux_1_2
           docker-options: ${{ matrix.platform.maturin_docker_options }}
-          args: --release -i python${{ matrix.python-version }} -o dist
+          args: --release -i python${{ env.BUILD_PYTHON_VERSION }} -o dist
       - name: Upload wheels
         uses: actions/upload-artifact@v7
         with:
-          name: wheels-musllinux-${{ matrix.python-version }}-${{ matrix.platform.target }}
+          name: wheels-musllinux-${{ matrix.platform.target }}
           path: crates/python/dist
 
   ci:

@@ -223,6 +223,10 @@ impl NeoFoodClub {
             .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
+    fn set_custom_probabilities(&mut self, probabilities: Option<[[f64; 5]; 5]>) {
+        self.inner.set_custom_probabilities(probabilities);
+    }
+
     fn max_ters(&self) -> Vec<f64> {
         self.inner.max_ters().clone()
     }

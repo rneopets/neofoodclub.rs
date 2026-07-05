@@ -25,6 +25,17 @@ def test_bet_amount(nfc: NeoFoodClub, nfc_from_url: NeoFoodClub) -> None:
     amount(nfc_from_url)
 
 
+def test_probabilities(nfc: NeoFoodClub) -> None:
+    probabilities = nfc.probabilities
+    assert len(probabilities) == 5
+    for row in probabilities:
+        assert len(row) == 5
+        # index 0 in each arena's row is a fixed placeholder (unused pirate
+        # slot); the 4 real pirate probabilities (indices 1-4) sum to 1.0.
+        assert row[0] == 1.0
+        assert sum(row[1:]) == pytest.approx(1.0)
+
+
 def test_set_custom_probabilities(nfc: NeoFoodClub) -> None:
     new_nfc = nfc.copy()
     before = new_nfc.make_max_ter_bets()
@@ -39,11 +50,15 @@ def test_set_custom_probabilities(nfc: NeoFoodClub) -> None:
         [0.2, 0.2, 0.2, 0.2, 0.2],
     ]
     new_nfc.set_custom_probabilities(probabilities)
+    assert new_nfc.probabilities == probabilities
+
     after = new_nfc.make_max_ter_bets()
     assert before.bets_hash != after.bets_hash
 
     # clearing the override should restore the original model's output.
     new_nfc.set_custom_probabilities(None)
+    assert new_nfc.probabilities == nfc.probabilities
+
     restored = new_nfc.make_max_ter_bets()
     assert restored.bets_hash == before.bets_hash
 

@@ -40,3 +40,17 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: "Clippy"
         run: cargo clippy --workspace --all-targets --all-features --locked -- -D warnings
+
+  wasm-build:
+    name: "wasm32 build check"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - name: "Install Rust toolchain"
+        run: |
+          rustup default nightly
+          rustup target add wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - name: "Build neofoodclub-wasm for wasm32-unknown-unknown"
+        run: cargo build -p neofoodclub-wasm --target wasm32-unknown-unknown --release

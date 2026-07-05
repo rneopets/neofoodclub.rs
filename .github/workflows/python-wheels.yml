@@ -29,6 +29,21 @@ jobs:
     steps:
       - &checkout-step
         uses: actions/checkout@v7
+      - &set-version-step
+        name: Set crate version from release tag
+        if: github.event_name == 'release'
+        run: |
+          VERSION="${TAG_NAME#v}"
+          awk -v ver="$VERSION" '
+            /^\[package\]/ { inpkg=1 }
+            /^\[/ && !/^\[package\]/ { inpkg=0 }
+            inpkg && /^version = / { print "version = \"" ver "\""; next }
+            { print }
+          ' crates/python/Cargo.toml > crates/python/Cargo.toml.new
+          mv crates/python/Cargo.toml.new crates/python/Cargo.toml
+          grep -m1 '^version' crates/python/Cargo.toml
+        env:
+          TAG_NAME: ${{ github.event.release.tag_name }}
       - uses: astral-sh/setup-uv@v8.3.0
         with:
           enable-cache: false
@@ -61,6 +76,7 @@ jobs:
           - target: powerpc64le-unknown-linux-gnu
     steps:
       - *checkout-step
+      - *set-version-step
       - uses: astral-sh/setup-uv@v8.3.0
         with:
           enable-cache: false
@@ -93,6 +109,7 @@ jobs:
           - target: armv7-unknown-linux-musleabihf
     steps:
       - *checkout-step
+      - *set-version-step
       - uses: astral-sh/setup-uv@v8.3.0
         with:
           enable-cache: false

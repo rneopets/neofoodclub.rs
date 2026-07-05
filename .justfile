@@ -35,3 +35,31 @@ fix: fmt clippy-fix
 # Includes integration tests; requires nightly for this repo.
 test:
   CARGO_TARGET_DIR=target/nightly RUSTC={{nightly_rustc}} RUSTDOC={{nightly_rustdoc}} {{nightly_cargo}} test --locked
+
+# Python bindings (crates/python) - built via maturin, not plain cargo
+py-build:
+  cd crates/python && uv run --with maturin maturin develop
+
+py-build-release:
+  cd crates/python && uv run --with maturin maturin develop --release
+
+py-test:
+  cd crates/python && uv run --with pytest pytest tests/
+
+py-test-coverage:
+  cd crates/python && uv run --with pytest --with coverage pytest --cov=neofoodclub --cov-report=term-missing tests/
+
+py-fmt:
+  cd crates/python && uv run --with ruff ruff format .
+
+py-lint:
+  cd crates/python && uv run --with ruff ruff check .
+
+py-dist:
+  cd crates/python && uv run --with maturin maturin build --release
+
+py-publish:
+  cd crates/python && uv run --with maturin maturin publish
+
+# Full Python workflow: rebuild extension then run tests
+py-test-all: py-build py-test

@@ -7,9 +7,14 @@
 
 A Rust implementation of the NeoFoodClub spec, as well as helper functionality.
 
+This is a Cargo workspace:
+
+- `crates/core` — the core Rust library (crate name `neofoodclub`).
+- `crates/python` — Python bindings (pyo3), published to PyPI as `neofoodclub`. Previously
+  lived in its own repo, [neofoodclub.py](https://github.com/rneopets/neofoodclub.py) (now
+  archived), which vendored this crate via a git submodule.
 
 ## Links
 
 - [Neofood.club](https://neofood.club/)
 - [Neofood.club source](https://github.com/rneopets/neofoodclub)
-- [neofoodclub.py](https://github.com/rneopets/neofoodclub.py) — the Python bindings of this Rust implementation.

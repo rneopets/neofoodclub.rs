@@ -18,6 +18,6 @@ jobs:
       - name: Install Rust
         run: rustup default nightly
       - name: Build
-        run: cargo build --verbose --workspace --exclude neofoodclub-python
+        run: cargo build --verbose --workspace --exclude neofoodclub-python --exclude neofoodclub-wasm
       - name: Run tests
-        run: cargo test --verbose --workspace --exclude neofoodclub-python
+        run: cargo test --verbose --workspace --exclude neofoodclub-python --exclude neofoodclub-wasm

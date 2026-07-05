@@ -1844,6 +1844,24 @@ mod tests {
     }
 
     #[test]
+    fn test_clear_caches() {
+        let mut nfc = make_test_nfc();
+
+        // populate every lazy cache clear_caches is responsible for resetting
+        nfc.get_arenas();
+        nfc.probabilities();
+        let ters_before = nfc.max_ters().clone();
+        let bets_before = nfc.make_max_ter_bets().bets_hash();
+
+        nfc.clear_caches();
+
+        // a full cache reset must not change any recomputed value
+        assert_eq!(nfc.get_arenas().arenas.len(), 5);
+        assert_eq!(nfc.max_ters().clone(), ters_before);
+        assert_eq!(nfc.make_max_ter_bets().bets_hash(), bets_before);
+    }
+
+    #[test]
     fn test_mer_and_gmer_not_equal() {
         let mut nfc = make_test_nfc();
 

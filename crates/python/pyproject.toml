@@ -1,0 +1,88 @@
+[project]
+name = "neofoodclub"
+dynamic = ["version"]
+description = "A Python implementation of functionality used in https://neofood.club"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = []
+license = { file = "LICENSE" }
+classifiers = [
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Rust",
+  "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[tool.coverage.run]
+relative_files = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "@overload",
+    '^ *\.\.\.$',
+    "if (False|TYPE_CHECKING):",
+    "def __repr__"
+]
+
+[tool.maturin]
+python-source = "python"
+
+[tool.pyright]
+include = [
+    "python/neofoodclub",
+]
+exclude = [
+    "**/__pycache__",
+]
+extraPaths = ["python"]
+reportUnnecessaryTypeIgnoreComment = "warning"
+reportUnusedImport = "error"
+pythonVersion = "3.11"
+typeCheckingMode = "basic"
+venvPath = "."
+venv = ".venv"
+
+[tool.ruff]
+show-fixes = true
+target-version = "py311"
+
+[tool.ruff.lint]
+extend-select = [
+    "C4",
+    "SIM",
+    "TC",
+    "UP",
+    "ANN201",
+    "ANN202",
+    "ANN204",
+    "ANN205",
+    "ANN206",
+]
+ignore = ["E501", "F403"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+[dependency-groups]
+dev = [
+    "coverage>=7.6.3",
+    "maturin>=1.0,<2.0",
+    "pytest>=8.3.3",
+    "setuptools-rust>=1.10.2",
+]

@@ -1,9 +1,35 @@
 repos:
+  - repo: "https://github.com/pre-commit/pre-commit-hooks"
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: check-merge-conflict
+      - id: check-case-conflict
+      - id: check-yaml
+      - id: check-ast
+      - id: debug-statements
+      - id: name-tests-test
+        files: ^crates/python/tests/
+        args: [--pytest-test-first]
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.10
+    hooks:
+      - id: ruff
+        files: ^crates/python/
+        args: [--fix]
+      - id: ruff-format
+        files: ^crates/python/
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.407
+    hooks:
+      - id: pyright
+        files: ^crates/python/
+        args: ["-p", "crates/python"]
   - repo: local
     hooks:
       - id: cargo-clippy
         name: Run cargo clippy
-        entry: cargo clippy --fix --allow-staged --workspace --all-targets --all-features --locked -- -D warnings
+        entry: cargo clippy --fix --allow-dirty --allow-staged --workspace --all-targets --all-features --locked -- -D warnings
         language: system
         types: [rust]
         pass_filenames: false

@@ -1,3 +1,17 @@
 /target
 lcov.info
 /target-nightly
+
+# Python bindings (crates/python)
+__pycache__/
+*.py[cod]
+*.so
+*.dSYM/
+.venv/
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+*.egg-info/
+crates/python/dist/
+crates/python/build/

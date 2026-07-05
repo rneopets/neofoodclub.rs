@@ -860,6 +860,36 @@ mod tests {
     }
 
     #[test]
+    fn test_custom_probabilities_override() {
+        let mut nfc = make_test_nfc();
+
+        let default_probs = nfc.probabilities();
+
+        // an arbitrary override, distinct from whatever the model computed
+        let custom = [
+            [1.0, 0.4, 0.3, 0.2, 0.1],
+            [1.0, 0.1, 0.2, 0.3, 0.4],
+            [1.0, 0.25, 0.25, 0.25, 0.25],
+            [1.0, 0.4, 0.3, 0.2, 0.1],
+            [1.0, 0.1, 0.2, 0.3, 0.4],
+        ];
+        nfc.set_custom_probabilities(Some(custom));
+
+        assert_eq!(nfc.probabilities(), custom);
+        assert_ne!(nfc.probabilities(), default_probs);
+
+        // round_dict_data (and everything derived from it, like the
+        // max-TER ranking) must reflect the override, not the model.
+        assert_eq!(nfc.round_dict_data().probs.len(), 3124);
+        let bets = nfc.make_max_ter_bets();
+        assert_eq!(bets.len(), 10);
+
+        // clearing the override falls back to the model's own computation.
+        nfc.set_custom_probabilities(None);
+        assert_eq!(nfc.probabilities(), default_probs);
+    }
+
+    #[test]
     fn test_max_ter_reverse() {
         let mut nfc = make_test_nfc_from_url();
 

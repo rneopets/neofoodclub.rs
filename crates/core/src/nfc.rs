@@ -47,6 +47,7 @@ pub struct NeoFoodClub {
     pub bet_amount: Option<u32>,
     pub modifier: Modifier,
     pub probability_model: ProbabilityModel,
+    custom_probabilities: Option<[[f64; 5]; 5]>,
     arenas: OnceCell<Arenas>,
     stds: OnceCell<[[f64; 5]; 5]>,
     data: OnceCell<RoundDictData>,
@@ -77,6 +78,7 @@ impl NeoFoodClub {
             bet_amount: None,
             modifier: use_modifier,
             probability_model: model.unwrap_or_default(),
+            custom_probabilities: None,
             arenas: OnceCell::new(),
             stds: OnceCell::new(),
             data: OnceCell::new(),
@@ -99,15 +101,34 @@ impl NeoFoodClub {
         self.clear_ranking_caches();
     }
 
+    /// Overrides the computed win probabilities with caller-supplied values,
+    /// bypassing the probability model entirely (used by "custom odds mode"
+    /// style callers who want to experiment with arbitrary probabilities that
+    /// don't correspond to any real odds/food data). Pass `None` to clear the
+    /// override and resume using the configured `probability_model`.
+    ///
+    /// This invalidates `round_dict_data()` and every ranking cache derived
+    /// from it, since those are computed from `probabilities()`.
+    pub fn set_custom_probabilities(&mut self, probabilities: Option<[[f64; 5]; 5]>) {
+        self.custom_probabilities = probabilities;
+        self.data = OnceCell::new();
+        self.clear_ranking_caches();
+    }
+
     /// Lazy loads the Arenas object.
     #[inline]
     pub fn get_arenas(&self) -> &Arenas {
         self.arenas.get_or_init(|| Arenas::new(&self.round_data))
     }
 
-    /// Lazy loads the probabilities.
+    /// Lazy loads the probabilities. Returns the custom override set via
+    /// `set_custom_probabilities`, if any, instead of computing via the
+    /// configured `probability_model`.
     #[inline]
     pub fn probabilities(&self) -> [[f64; 5]; 5] {
+        if let Some(custom) = self.custom_probabilities {
+            return custom;
+        }
         *self.stds.get_or_init(|| match self.probability_model {
             ProbabilityModel::OriginalModel => OriginalModel::new(&self.round_data),
             ProbabilityModel::MultinomialLogitModel => {

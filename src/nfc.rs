@@ -60,6 +60,7 @@ pub struct NeoFoodClub {
     clamped_max_bets: OnceCell<Vec<u32>>,
     sorted_odds_indices: OnceCell<Vec<usize>>,
     sorted_probs_indices: OnceCell<Vec<usize>>,
+    highest_er_full_bet: OnceCell<u32>,
 }
 
 impl NeoFoodClub {
@@ -89,6 +90,7 @@ impl NeoFoodClub {
             clamped_max_bets: OnceCell::new(),
             sorted_odds_indices: OnceCell::new(),
             sorted_probs_indices: OnceCell::new(),
+            highest_er_full_bet: OnceCell::new(),
         };
 
         nfc.set_bet_amount(bet_amount);
@@ -102,6 +104,7 @@ impl NeoFoodClub {
         self.clamped_max_bets = OnceCell::new();
         self.net_expected_indices = OnceCell::new();
         self.max_ter_indices = OnceCell::new();
+        self.highest_er_full_bet = OnceCell::new();
     }
 
     /// Lazy loads the Arenas object.
@@ -138,6 +141,23 @@ impl NeoFoodClub {
         self.net_expected_indices = OnceCell::new();
         self.sorted_odds_indices = OnceCell::new();
         self.sorted_probs_indices = OnceCell::new();
+        self.highest_er_full_bet = OnceCell::new();
+        self.round_data.custom_odds = None;
+    }
+
+    /// Clear every lazy-loaded cache that depends on odds/time, but leave
+    /// `stds` (the probabilities cache) intact, since the probability models
+    /// only depend on opening odds (fixed at round creation) and food data,
+    /// neither of which `with_modifier` ever changes.
+    fn clear_odds_dependent_caches(&mut self) {
+        self.arenas = OnceCell::new();
+        self.data = OnceCell::new();
+        self.clamped_max_bets = OnceCell::new();
+        self.max_ter_indices = OnceCell::new();
+        self.net_expected_indices = OnceCell::new();
+        self.sorted_odds_indices = OnceCell::new();
+        self.sorted_probs_indices = OnceCell::new();
+        self.highest_er_full_bet = OnceCell::new();
         self.round_data.custom_odds = None;
     }
 
@@ -151,7 +171,7 @@ impl NeoFoodClub {
                 || current_modifier.custom_time != modifier.custom_time
                 || current_modifier.is_opening_odds() != modifier.is_opening_odds())
         {
-            self.clear_caches();
+            self.clear_odds_dependent_caches();
         } else if current_modifier.is_general() != modifier.is_general()
             || current_modifier.is_reverse() != modifier.is_reverse()
         {
@@ -160,6 +180,7 @@ impl NeoFoodClub {
             // cache, but both invalidate the derived index caches.
             self.net_expected_indices = OnceCell::new();
             self.max_ter_indices = OnceCell::new();
+            self.highest_er_full_bet = OnceCell::new();
         }
 
         self.round_data.custom_odds = None;
@@ -464,52 +485,40 @@ impl NeoFoodClub {
         })
     }
 
-    /// Returns sorted indices of odds
-    /// If `descending` is true, returns highest to lowest.
-    /// If `descending` is false, returns lowest to highest.
-    fn get_sorted_odds_indices(&self, descending: bool, amount: usize) -> Vec<usize> {
-        let indices = self.sorted_odds_indices.get_or_init(|| {
+    /// Returns sorted indices of odds, highest to lowest.
+    fn get_sorted_odds_indices(&self) -> &[usize] {
+        self.sorted_odds_indices.get_or_init(|| {
             let data = self.round_dict_data();
-            argsort_slice_3124(&data.odds, |a: &u32, b: &u32| a.cmp(b))
-        });
-
-        let mut result = indices.clone();
-        if descending {
-            result.reverse();
-        }
-        result.truncate(amount);
-        result
+            let mut indices = argsort_slice_3124(&data.odds, |a: &u32, b: &u32| a.cmp(b));
+            indices.reverse();
+            indices
+        })
     }
 
-    /// Returns sorted indices of probabilities
-    /// If `descending` is true, returns highest to lowest.
-    /// If `descending` is false, returns lowest to highest.
-    fn get_sorted_probs_indices(&self, descending: bool, amount: usize) -> Vec<usize> {
-        let indices = self.sorted_probs_indices.get_or_init(|| {
+    /// Returns sorted indices of probabilities, highest to lowest.
+    fn get_sorted_probs_indices(&self) -> &[usize] {
+        self.sorted_probs_indices.get_or_init(|| {
             let data = self.round_dict_data();
-            argsort_slice_3124(&data.probs, |a: &f64, b: &f64| a.total_cmp(b))
-        });
-
-        let mut result = indices.clone();
-        if descending {
-            result.reverse();
-        }
-        result.truncate(amount);
-        result
+            let mut indices = argsort_slice_3124(&data.probs, |a: &f64, b: &f64| a.total_cmp(b));
+            indices.reverse();
+            indices
+        })
     }
 
     /// Return the binary representation of the highest expected return full-arena bet.
     fn get_highest_er_full_bet(&self) -> u32 {
-        let data = self.round_dict_data();
+        *self.highest_er_full_bet.get_or_init(|| {
+            let data = self.round_dict_data();
 
-        let index = self
-            .max_ter_indices()
-            .iter()
-            .copied()
-            .find(|&index| data.bins[index].count_ones() == 5)
-            .expect("round data always contains at least one full-arena bet");
+            let index = self
+                .max_ter_indices()
+                .iter()
+                .copied()
+                .find(|&index| data.bins[index].count_ones() == 5)
+                .expect("round data always contains at least one full-arena bet");
 
-        data.bins[index]
+            data.bins[index]
+        })
     }
 }
 
@@ -535,7 +544,7 @@ impl NeoFoodClub {
     /// Creates a Bets object that consists of the highest ER bets that
     /// are greater than or equal to the given units.
     pub fn make_units_bets(&self, units: u32) -> Option<Bets> {
-        let sorted_probs = self.get_sorted_probs_indices(true, 3124);
+        let sorted_probs = self.get_sorted_probs_indices();
         let data = self.round_dict_data();
 
         let count = self.max_amount_of_bets();
@@ -599,8 +608,9 @@ impl NeoFoodClub {
         let data = self.round_dict_data();
         let bins = &data.bins;
         let indices = self
-            .get_sorted_odds_indices(true, 3124)
-            .into_iter()
+            .get_sorted_odds_indices()
+            .iter()
+            .copied()
             .filter(|&index| bins[index] & pirates_binary == bins[index])
             .take(self.max_amount_of_bets())
             .collect();

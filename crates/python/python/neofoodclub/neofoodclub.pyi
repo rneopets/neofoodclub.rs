@@ -845,6 +845,13 @@ class NeoFoodClub:
         """Optional[Dict[:class:`int`, :class:`int`]]: The custom odds of the modifier."""
 
     @property
+    def probabilities(self) -> list[list[float]]:
+        """List[List[:class:`float`]]: The effective 5x5 win-probabilities grid -
+        the override set via :meth:`set_custom_probabilities`, if any, otherwise
+        the configured probability model's computed values.
+        """
+
+    @property
     def pirates(self) -> list[list[int]]:
         """List[List[:class:`int`]]: Returns the pirates in the round."""
 

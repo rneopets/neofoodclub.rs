@@ -184,6 +184,15 @@ impl NeoFoodClub {
     }
 
     #[getter]
+    fn probabilities(&self) -> Vec<Vec<f64>> {
+        self.inner
+            .probabilities()
+            .into_iter()
+            .map(|p| p.to_vec())
+            .collect()
+    }
+
+    #[getter]
     fn opening_odds(&self) -> Vec<Vec<u8>> {
         self.inner
             .opening_odds()

@@ -21,10 +21,7 @@ pub fn compute_bets_indices_to_hash(flat_indices: Vec<u8>) -> Result<String, JsE
     if !flat_indices.len().is_multiple_of(5) {
         return Err(JsError::new("length must be a multiple of 5"));
     }
-    let indices: Vec<[u8; 5]> = flat_indices
-        .chunks_exact(5)
-        .map(|c| [c[0], c[1], c[2], c[3], c[4]])
-        .collect();
+    let indices: Vec<[u8; 5]> = flat_indices.as_chunks::<5>().0.to_vec();
     Ok(math::bets_hash_value(indices))
 }
 

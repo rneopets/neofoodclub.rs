@@ -102,10 +102,7 @@ pub fn compute_payout_tables(
         ));
     }
 
-    let bets: Vec<[u8; 5]> = bet_indices
-        .chunks_exact(5)
-        .map(|chunk| [chunk[0], chunk[1], chunk[2], chunk[3], chunk[4]])
-        .collect();
+    let bets: Vec<[u8; 5]> = bet_indices.as_chunks::<5>().0.to_vec();
 
     let mut probs = [[0.0; 5]; 5];
     for arena in 0..5 {

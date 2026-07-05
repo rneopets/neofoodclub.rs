@@ -868,3 +868,17 @@ class NeoFoodClub:
             The modifier to use.
 
         """
+
+    def set_custom_probabilities(
+        self, probabilities: Sequence[Sequence[float]] | None
+    ) -> None:
+        """Overrides the computed win probabilities with caller-supplied values,
+        bypassing the configured probability model entirely. Pass ``None`` to
+        clear the override and resume using the configured probability model.
+
+        Parameters
+        ----------
+        probabilities: Optional[Sequence[Sequence[:class:`float`]]]
+            A 5x5 grid of win probabilities, or ``None`` to clear the override.
+
+        """

@@ -25,6 +25,29 @@ def test_bet_amount(nfc: NeoFoodClub, nfc_from_url: NeoFoodClub) -> None:
     amount(nfc_from_url)
 
 
+def test_set_custom_probabilities(nfc: NeoFoodClub) -> None:
+    new_nfc = nfc.copy()
+    before = new_nfc.make_max_ter_bets()
+
+    # heavily favor arena 0's 4th pirate over everything else, which should
+    # change what max-TER bets get generated versus the default model.
+    probabilities = [
+        [0.0, 0.0, 0.0, 0.0, 1.0],
+        [0.2, 0.2, 0.2, 0.2, 0.2],
+        [0.2, 0.2, 0.2, 0.2, 0.2],
+        [0.2, 0.2, 0.2, 0.2, 0.2],
+        [0.2, 0.2, 0.2, 0.2, 0.2],
+    ]
+    new_nfc.set_custom_probabilities(probabilities)
+    after = new_nfc.make_max_ter_bets()
+    assert before.bets_hash != after.bets_hash
+
+    # clearing the override should restore the original model's output.
+    new_nfc.set_custom_probabilities(None)
+    restored = new_nfc.make_max_ter_bets()
+    assert restored.bets_hash == before.bets_hash
+
+
 def test_modifier(nfc: NeoFoodClub, nfc_from_url: NeoFoodClub) -> None:
     def modify(n: NeoFoodClub) -> None:
         modifier = Modifier(Modifier.REVERSE)

@@ -46,8 +46,9 @@ pub fn make_probabilities(arenas: &Arenas) -> [[f64; 5]; 5] {
     probs
 }
 
-// these magic numbers are to be updated from time to time, surely.
-// for more info: https://github.com/arsdragonfly/neofoodclub
+// Retrained monthly by automation/final.py (see
+// .github/workflows/update-logit-values.yml), which patches this block in
+// place. Original methodology: https://github.com/arsdragonfly/neofoodclub
 
 static LOGIT_INTERCEPTS: [f64; 20] = [
     -0.5505653467394124,

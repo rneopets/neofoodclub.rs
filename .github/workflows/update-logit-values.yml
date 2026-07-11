@@ -1,0 +1,52 @@
+name: Update logit values
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 1 * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ${{ github.workflow }}
+
+jobs:
+  update-logit-values:
+    name: Retrain and patch logit coefficients
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v8.3.0
+        with:
+          enable-cache: false
+          python-version-file: automation/.python-version
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Fetch previous.jsonl, preprocess, retrain, and patch multinomial_logit.rs
+        working-directory: automation
+        run: |
+          uv run fetch_previous.py
+          uv run preprocessing.py
+          uv run final.py
+
+      - name: Format patched file
+        run: cargo fmt
+
+      - name: Commit and push
+        run: |
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          if git diff --quiet -- crates/core/src/models/multinomial_logit.rs; then
+            echo "No coefficient changes this month, nothing to commit."
+            exit 0
+          fi
+          git add crates/core/src/models/multinomial_logit.rs
+          git commit -m "Update logit coefficients"
+          git push

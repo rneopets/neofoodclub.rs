@@ -15,3 +15,6 @@ htmlcov/
 *.egg-info/
 crates/python/dist/
 crates/python/build/
+
+# automation/ - fetched + regenerated fresh from cdn.neofood.club/previous.jsonl on every run
+automation/output/

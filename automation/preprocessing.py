@@ -10,9 +10,8 @@ columns = ["round", "arena", "pirate1", "pirate2", "pirate3", "pirate4", "fa1", 
 # fmt: on
 
 
-def get_df_from_file(path: Path) -> pl.DataFrame:
+def get_df_from_round(data: dict) -> pl.DataFrame:
     rows: list[Any] = []
-    data = json.loads(path.read_text())
     winners = data["winners"]
     if winners is None or not all(winners):
         return pl.DataFrame(schema=columns)
@@ -48,12 +47,15 @@ def get_df_from_file(path: Path) -> pl.DataFrame:
     return pl.DataFrame(schema=columns)
 
 
-pathlist = list(Path("raw_json").glob("**/*.json"))
 dfs: list[pl.DataFrame] = []
-for path in pathlist:
-    df = get_df_from_file(path)
-    if df.height > 0:
-        dfs.append(df)
+with Path("output/previous.jsonl").open() as f:
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        df = get_df_from_round(json.loads(line))
+        if df.height > 0:
+            dfs.append(df)
 
 if dfs:
     df = pl.concat(dfs)

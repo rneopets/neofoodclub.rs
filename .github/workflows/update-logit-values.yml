@@ -29,10 +29,10 @@ jobs:
         with:
           components: rustfmt
 
-      - name: Grab latest rounds, preprocess, retrain, and patch multinomial_logit.rs
+      - name: Fetch previous.jsonl, preprocess, retrain, and patch multinomial_logit.rs
         working-directory: automation
         run: |
-          uv run grab_rounds.py
+          uv run fetch_previous.py
           uv run preprocessing.py
           uv run final.py
 
@@ -43,10 +43,10 @@ jobs:
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          if git diff --quiet; then
+          if git diff --quiet -- crates/core/src/models/multinomial_logit.rs; then
             echo "No coefficient changes this month, nothing to commit."
             exit 0
           fi
-          git add -A
+          git add crates/core/src/models/multinomial_logit.rs
           git commit -m "Update logit coefficients"
           git push

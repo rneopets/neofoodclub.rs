@@ -54,6 +54,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: "Build neofoodclub-wasm for wasm32-unknown-unknown"
         run: cargo build -p neofoodclub-wasm --target wasm32-unknown-unknown --release
+      - name: "Run neofoodclub-wasm host-target unit tests"
+        run: cargo test -p neofoodclub-wasm
+      - uses: taiki-e/install-action@wasm-pack
+      - name: "Run neofoodclub-wasm wasm-bindgen-test suite"
+        working-directory: crates/wasm
+        run: wasm-pack test --node
 
   python-tests:
     name: "Python tests"

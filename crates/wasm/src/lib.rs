@@ -143,3 +143,58 @@ pub fn compute_pirates_binary(pirates: Vec<u8>) -> Result<u32, JsError> {
 pub fn compute_binary_to_pirates(bin: u32) -> Vec<u8> {
     math::binary_to_indices(bin).to_vec()
 }
+
+// Note: only the Ok path of these Result<_, JsError>-returning functions is
+// safe to exercise here. Constructing a JsError (the Err path) calls into
+// wasm-bindgen's JS glue and panics on non-wasm targets with "cannot call
+// wasm-bindgen imported functions on non-wasm targets" - so error-path
+// coverage for these functions (and anything returning JsValue) lives in
+// crates/wasm/tests/web.rs instead, run via wasm-pack test --node.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const ROUND_DATA_JSON: &str = r#"
+{"foods":[[5,20,24,21,18,7,34,29,38,8],[26,24,20,36,33,40,5,13,8,25],[5,29,22,31,40,27,30,4,8,19],[35,19,36,5,12,37,6,3,29,30],[28,24,36,17,18,9,1,33,19,3]],"round":8765,"start":"2023-05-05T23:14:57+00:00","changes":[{"t":"2023-05-06T00:17:30+00:00","new":7,"old":5,"arena":1,"pirate":3},{"t":"2023-05-06T00:21:43+00:00","new":10,"old":8,"arena":3,"pirate":2}],"pirates":[[6,11,4,3],[14,15,2,9],[10,16,18,20],[1,12,13,5],[8,19,17,7]],"winners":[3,2,3,2,2],"timestamp":"2023-05-06T23:14:20+00:00","lastChange":"2023-05-06T19:21:01+00:00","currentOdds":[[1,11,3,2,3],[1,13,2,7,13],[1,13,2,4,2],[1,2,10,6,6],[1,13,4,2,4]],"openingOdds":[[1,11,3,2,4],[1,13,2,5,13],[1,13,2,5,2],[1,2,8,5,5],[1,13,3,2,4]]}
+"#;
+
+    #[test]
+    fn compute_std_probabilities_returns_25_elements_for_original_model() {
+        let probs = compute_std_probabilities(ROUND_DATA_JSON, false).unwrap();
+        assert_eq!(probs.len(), 25);
+    }
+
+    #[test]
+    fn compute_std_probabilities_returns_25_elements_for_logit_model() {
+        let probs = compute_std_probabilities(ROUND_DATA_JSON, true).unwrap();
+        assert_eq!(probs.len(), 25);
+    }
+
+    #[test]
+    fn compute_arena_ratios_happy_path() {
+        let odds = vec![
+            1.0, 11.0, 3.0, 2.0, 3.0, 1.0, 13.0, 2.0, 7.0, 13.0, 1.0, 13.0, 2.0, 4.0, 2.0, 1.0,
+            2.0, 10.0, 6.0, 6.0, 1.0, 13.0, 4.0, 2.0, 4.0,
+        ];
+        let ratios = compute_arena_ratios(odds).unwrap();
+        assert_eq!(ratios.len(), 5);
+    }
+
+    #[test]
+    fn compute_pirate_binary_matches_underlying_math_fn() {
+        assert_eq!(compute_pirate_binary(0, 1), math::pirate_binary(1, 0));
+    }
+
+    #[test]
+    fn compute_pirates_binary_happy_path() {
+        let bin = compute_pirates_binary(vec![1, 2, 3, 4, 1]).unwrap();
+        assert_eq!(bin, math::pirates_binary([1, 2, 3, 4, 1]));
+    }
+
+    #[test]
+    fn compute_binary_to_pirates_round_trips_with_pirates_binary() {
+        let indices = vec![1, 2, 3, 4, 1];
+        let bin = compute_pirates_binary(indices.clone()).unwrap();
+        assert_eq!(compute_binary_to_pirates(bin), indices);
+    }
+}

@@ -1,7 +1,7 @@
 use comfy_table::Table;
 
 use crate::{
-    arena::ARENA_NAMES,
+    arena::{Arenas, ARENA_NAMES},
     error::NfcError,
     math::{
         amounts_hash_to_bet_amounts, bet_amounts_to_amounts_hash, bets_hash_to_bet_binaries,
@@ -374,6 +374,24 @@ impl Bets {
         nfc.make_url(Some(self), include_domain, all_data)
     }
 
+    /// Returns the pirate names for one bet row, in arena order, with an
+    /// empty string for arenas the bet didn't pick.
+    fn pirate_name_row(bet_indices: &[u8], arenas: &Arenas) -> Vec<String> {
+        bet_indices
+            .iter()
+            .enumerate()
+            .map(|(arena_index, &pirate_index)| {
+                if pirate_index == 0 {
+                    String::new()
+                } else {
+                    let arena = arenas.get_arena(arena_index).unwrap();
+                    let pirate = arena.get_pirate_by_index(pirate_index - 1).unwrap();
+                    pirate.get_name().to_string()
+                }
+            })
+            .collect()
+    }
+
     /// Returns a table visualization of the bets
     pub fn table(&self, nfc: &NeoFoodClub) -> String {
         let mut table = Table::new();
@@ -388,16 +406,7 @@ impl Bets {
 
         for (bet_index, bet_row) in self.get_indices().iter().enumerate() {
             let mut row = vec![(bet_index + 1).to_string()];
-
-            for (arena_index, pirate_index) in bet_row.iter().enumerate() {
-                if pirate_index == &0 {
-                    row.push("".to_string());
-                } else {
-                    let arena = arenas.get_arena(arena_index).unwrap();
-                    let pirate = &arena.get_pirate_by_index(pirate_index - 1).unwrap();
-                    row.push(pirate.get_name().to_string());
-                }
-            }
+            row.extend(Self::pirate_name_row(bet_row, arenas));
             table.add_row(row);
         }
 
@@ -452,15 +461,7 @@ impl Bets {
 
             row.extend(vec![data.maxbets[bin_index].to_string(), hex]);
 
-            for (arena_index, pirate_index) in bet_indices.iter().enumerate() {
-                if pirate_index == &0 {
-                    row.push("".to_string());
-                } else {
-                    let arena = arenas.get_arena(arena_index).unwrap();
-                    let pirate = &arena.get_pirate_by_index(pirate_index - 1).unwrap();
-                    row.push(pirate.get_name().to_string());
-                }
-            }
+            row.extend(Self::pirate_name_row(bet_indices, arenas));
             table.add_row(row);
         }
 

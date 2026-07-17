@@ -1,0 +1,28 @@
+[workspace]
+
+[package]
+name = "neofoodclub-core-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+neofoodclub = { path = "../crates/core" }
+
+[[bin]]
+name = "fuzz_bets_hash"
+path = "fuzz_targets/fuzz_bets_hash.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "fuzz_amounts_hash"
+path = "fuzz_targets/fuzz_amounts_hash.rs"
+test = false
+doc = false
+bench = false

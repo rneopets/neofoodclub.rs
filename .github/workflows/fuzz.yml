@@ -1,0 +1,36 @@
+name: Fuzz
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 0 * * 0"
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  fuzz:
+    name: "Fuzz ${{ matrix.target }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [fuzz_bets_hash, fuzz_amounts_hash]
+    steps:
+      - uses: actions/checkout@v7
+      - name: "Install Rust toolchain"
+        run: rustup default nightly
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: fuzz -> target
+      - name: "Install cargo-fuzz"
+        run: cargo install cargo-fuzz --locked
+      - name: "Run ${{ matrix.target }} for 5 minutes"
+        run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=300
+      - name: "Upload crash artifacts"
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: crash-${{ matrix.target }}
+          path: fuzz/artifacts/${{ matrix.target }}

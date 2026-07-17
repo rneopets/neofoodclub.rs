@@ -20,3 +20,13 @@ This is a Cargo workspace:
 - [Neofood.club](https://neofood.club/)
 - [Neofood.club source](https://github.com/rneopets/neofoodclub)
 - [PyPI package](https://pypi.org/project/neofoodclub/)
+
+## Fuzzing
+
+crates/core has cargo-fuzz targets under `fuzz/` for the untrusted hash-parsing
+functions in `math.rs`. Requires the nightly toolchain and `cargo install cargo-fuzz`.
+
+```
+cargo +nightly fuzz run fuzz_bets_hash
+cargo +nightly fuzz run fuzz_amounts_hash
+```

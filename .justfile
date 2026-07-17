@@ -36,6 +36,13 @@ fix: fmt clippy-fix
 test:
   CARGO_TARGET_DIR=target/nightly RUSTC={{nightly_rustc}} RUSTDOC={{nightly_rustdoc}} {{nightly_cargo}} test --locked
 
+# Fuzzing (crates/core hash-parsing functions) - requires nightly + cargo-fuzz
+fuzz-bets-hash:
+  cd fuzz && cargo +nightly fuzz run fuzz_bets_hash
+
+fuzz-amounts-hash:
+  cd fuzz && cargo +nightly fuzz run fuzz_amounts_hash
+
 # Python bindings (crates/python) - built via maturin, not plain cargo
 py-build:
   cd crates/python && uv run --with maturin maturin develop

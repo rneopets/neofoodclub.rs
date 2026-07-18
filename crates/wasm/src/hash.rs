@@ -51,3 +51,69 @@ pub fn compute_bet_amounts_to_amounts_hash(amounts: Vec<i64>) -> String {
         .collect();
     math::bet_amounts_to_amounts_hash(&opts)
 }
+
+// Note: only the Ok path of these Result<_, JsError>-returning functions is
+// safe to exercise here. Constructing a JsError (the Err path) calls into
+// wasm-bindgen's JS glue and panics on non-wasm targets with "cannot call
+// wasm-bindgen imported functions on non-wasm targets" - so error-path
+// coverage for these functions lives in crates/wasm/tests/web.rs instead,
+// run via wasm-pack test --node.
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bets_hash_to_indices_decodes_valid_hash() {
+        let indices = compute_bets_hash_to_indices("faafaafaafaafaafaa").unwrap();
+        assert_eq!(
+            indices,
+            vec![
+                1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0,
+                0, 0
+            ]
+        );
+    }
+
+    #[test]
+    fn bets_indices_to_hash_round_trips() {
+        let flat = compute_bets_hash_to_indices("faa").unwrap();
+        let hash = compute_bets_indices_to_hash(flat.clone()).unwrap();
+        let round_tripped = compute_bets_hash_to_indices(&hash).unwrap();
+        assert_eq!(round_tripped, flat);
+    }
+
+    #[test]
+    fn amounts_hash_to_bet_amounts_decodes_valid_hash() {
+        let amounts = compute_amounts_hash_to_bet_amounts("AaYAbWAcUAdSAeQ").unwrap();
+        assert_eq!(amounts, vec![50, 100, 150, 200, 250]);
+    }
+
+    #[test]
+    fn amounts_hash_to_bet_amounts_uses_negative_one_sentinel_for_unset() {
+        // The 10th amount in this hash decodes to None (below BET_AMOUNT_MIN).
+        let amounts =
+            compute_amounts_hash_to_bet_amounts("EmxCoKCoKCglDKUCYqEXkByWBpqzGO").unwrap();
+        assert_eq!(amounts.last(), Some(&-1));
+        assert!(amounts[..9].iter().all(|&v| v >= 1));
+    }
+
+    #[test]
+    fn bet_amounts_to_amounts_hash_round_trips() {
+        let amounts = vec![50, 100, 150, 200, 250];
+        let hash = compute_bet_amounts_to_amounts_hash(amounts.clone());
+        let round_tripped = compute_amounts_hash_to_bet_amounts(&hash).unwrap();
+        assert_eq!(round_tripped, amounts);
+    }
+
+    #[test]
+    fn bet_amounts_to_amounts_hash_encodes_values_below_one_as_unset() {
+        // 0 and the -1 sentinel should both encode as "unset".
+        let hash_zero = compute_bet_amounts_to_amounts_hash(vec![0]);
+        let hash_sentinel = compute_bet_amounts_to_amounts_hash(vec![-1]);
+        assert_eq!(hash_zero, hash_sentinel);
+        assert_eq!(
+            compute_amounts_hash_to_bet_amounts(&hash_zero).unwrap(),
+            vec![-1]
+        );
+    }
+}

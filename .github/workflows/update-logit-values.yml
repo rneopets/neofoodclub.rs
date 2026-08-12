@@ -21,7 +21,7 @@ jobs:
           token: ${{ secrets.ADMIN_PUSH_TOKEN }}
 
       - name: Install uv
-        uses: astral-sh/setup-uv@v9.0.0
+        uses: astral-sh/setup-uv@v10.0.0
         with:
           enable-cache: false
           working-directory: automation

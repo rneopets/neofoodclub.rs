@@ -234,6 +234,54 @@ mod payout_table_tests {
     }
 
     #[test]
+    fn test_maxbets_table_matches_div_ceil_formula() {
+        // Regression: fill_bet_amounts reads maxbets[i] directly instead of computing
+        // div_ceil(1_000_000 / odds[i]) per bet. Pin the table against the historical
+        // formula for every combo so the two can never drift apart.
+        let nfc = make_nfc(BET_AMOUNT);
+        let data = nfc.round_dict_data();
+
+        assert_eq!(data.maxbets.len(), 3124);
+        for (idx, (odds, maxbet)) in data.odds.iter().zip(data.maxbets.iter()).enumerate() {
+            let expected = 1_000_000u32.div_ceil(*odds);
+            assert_eq!(
+                *maxbet, expected,
+                "combo {idx}: maxbets[{idx}] = {maxbet} but div_ceil(1_000_000 / odds {odds}) = {expected}"
+            );
+        }
+    }
+
+    #[test]
+    fn test_fill_bet_amounts_matches_formula_on_all_bets() {
+        // Regression: fill_bet_amounts output must be identical whether computed from
+        // the maxbets table or from div_ceil(1_000_000 / odds) directly.
+        let nfc = make_nfc(BET_AMOUNT);
+        let mut bets = nfc.make_all_bets();
+        bets.fill_bet_amounts(&nfc);
+
+        let data = nfc.round_dict_data();
+        let bet_amount = nfc.bet_amount.unwrap();
+        let amounts = bets.bet_amounts.as_ref().unwrap();
+
+        for (amount_opt, &idx) in amounts.iter().zip(bets.array_indices.iter()) {
+            let amount = amount_opt.unwrap();
+            let formula_div = 1_000_000u32 / data.odds[idx];
+            let formula_maxbet = if 1_000_000u32 % data.odds[idx] > 0 {
+                formula_div + 1
+            } else {
+                formula_div
+            };
+            let expected = bet_amount
+                .min(formula_maxbet)
+                .max(neofoodclub::math::BET_AMOUNT_MIN);
+            assert_eq!(
+                amount, expected,
+                "combo {idx}: table-based amount != formula-based"
+            );
+        }
+    }
+
+    #[test]
     fn test_fill_bet_amounts_no_op_without_bet_amount() {
         let nfc = make_nfc_no_amount();
         let mut bets = nfc.make_bustproof_bets().unwrap();

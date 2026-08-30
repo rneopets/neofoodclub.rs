@@ -266,7 +266,7 @@ mod payout_table_tests {
         for (amount_opt, &idx) in amounts.iter().zip(bets.array_indices.iter()) {
             let amount = amount_opt.unwrap();
             let formula_div = 1_000_000u32 / data.odds[idx];
-            let formula_maxbet = if 1_000_000u32 % data.odds[idx] > 0 {
+            let formula_maxbet = if !1_000_000u32.is_multiple_of(data.odds[idx]) {
                 formula_div + 1
             } else {
                 formula_div

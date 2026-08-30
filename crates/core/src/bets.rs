@@ -81,10 +81,8 @@ pub struct Bets {
 impl Bets {
     /// Creates a new Bets struct from a list of indices (without bet amounts)
     pub fn new(nfc: &NeoFoodClub, indices: Vec<usize>) -> Self {
-        let bet_binaries = indices
-            .iter()
-            .map(|&i| nfc.round_dict_data().bins[i])
-            .collect();
+        let data = nfc.round_dict_data();
+        let bet_binaries = indices.iter().map(|&i| data.bins[i]).collect();
 
         let odds = Odds::new(nfc, &indices);
 

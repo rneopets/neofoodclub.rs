@@ -384,7 +384,15 @@ fn ib_prob(binary: u32, probabilities: &[[f64; 5]; 5]) -> f64 {
         })
 }
 
+/// Public API: same as [`expand_ib_object_fx`] but returns a std `HashMap` so the
+/// signature stays stable for downstream users.
 pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> std::collections::HashMap<u32, u32> {
+    expand_ib_object_fx(bets, bet_odds).into_iter().collect()
+}
+
+/// Fx-hashed variant used internally (see `build_chance_objects`) to avoid a
+/// SipHash re-hash of every key on the odds/chance hot path.
+pub(crate) fn expand_ib_object_fx(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32> {
     // makes a dict of permutations of the pirates + odds
     // this is why the bet table could be very long
 
@@ -498,7 +506,7 @@ pub fn build_chance_objects(
     bet_odds: &[u32],
     probabilities: [[f64; 5]; 5],
 ) -> Vec<Chance> {
-    let expanded = expand_ib_object(bets, bet_odds);
+    let expanded = expand_ib_object_fx(bets, bet_odds);
     let mut win_table: HashMap<u32, f64> = HashMap::default();
     for (key, value) in expanded.iter() {
         *win_table.entry(*value).or_insert(0.0) += ib_prob(*key, &probabilities);

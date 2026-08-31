@@ -88,7 +88,10 @@ impl Math {
     }
 
     #[staticmethod]
-    fn expand_ib_object(bets: Vec<[u8; 5]>, bet_odds: Vec<u32>) -> neofoodclub::math::FxHashMap<u32, u32> {
+    fn expand_ib_object(
+        bets: Vec<[u8; 5]>,
+        bet_odds: Vec<u32>,
+    ) -> neofoodclub::math::FxHashMap<u32, u32> {
         neofoodclub::math::expand_ib_object(&bets, &bet_odds)
     }
 }

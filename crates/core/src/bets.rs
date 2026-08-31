@@ -226,16 +226,12 @@ impl Bets {
             return;
         };
 
+        // maxbets[i] is precomputed as 1_000_000.div_ceil(odds[i]) in make_round_dicts,
+        // so we read it directly instead of recomputing the division per bet.
+        let data = nfc.round_dict_data();
         let mut amounts = Vec::<Option<u32>>::with_capacity(self.array_indices.len());
-        for odds in self.odds_values(nfc).iter() {
-            let mut div = 1_000_000 / odds;
-            let modulo = 1_000_000 % odds;
-
-            if modulo > 0 {
-                div += 1;
-            }
-
-            let amount = bet_amount.min(div).max(BET_AMOUNT_MIN);
+        for &i in &self.array_indices {
+            let amount = bet_amount.min(data.maxbets[i]).max(BET_AMOUNT_MIN);
             amounts.push(Some(amount));
         }
         self.bet_amounts = Some(amounts);

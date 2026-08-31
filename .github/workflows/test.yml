@@ -15,8 +15,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
-      - name: Install Rust
-        run: rustup default nightly
       - uses: Swatinem/rust-cache@v2
       - name: Build
         run: cargo build --verbose --workspace --exclude neofoodclub-python --exclude neofoodclub-wasm

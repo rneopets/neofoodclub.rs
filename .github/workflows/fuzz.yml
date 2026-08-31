@@ -24,8 +24,14 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: fuzz -> target
-      - name: "Install cargo-fuzz"
-        run: cargo install cargo-fuzz --locked
+      - name: "Install cargo-fuzz (cached)"
+        run: |
+          # rust-cache restores $CARGO_HOME/bin, so on a cache hit this skips the
+          # multi-minute source build. The version check also catches stale cached
+          # binaries after a pin bump below.
+          if ! cargo fuzz --version 2>/dev/null | grep -q "0\.13\.2"; then
+            cargo install cargo-fuzz --locked --version 0.13.2
+          fi
       - name: "Run ${{ matrix.target }} for 5 minutes"
         run: cargo fuzz run ${{ matrix.target }} -- -max_total_time=300
       - name: "Upload crash artifacts"

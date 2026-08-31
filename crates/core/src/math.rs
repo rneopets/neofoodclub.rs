@@ -1,5 +1,6 @@
 use itertools::Itertools;
 use rand::RngExt;
+pub use rustc_hash::FxHashMap;
 use rustc_hash::FxHashMap as HashMap;
 
 use crate::chance::Chance;
@@ -384,7 +385,11 @@ fn ib_prob(binary: u32, probabilities: &[[f64; 5]; 5]) -> f64 {
         })
 }
 
-pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> std::collections::HashMap<u32, u32> {
+/// Returns an `FxHashMap` rather than a std `HashMap` since this sits on the odds/chance
+/// hot path (`build_chance_objects`, called by `Odds::new` for every bet set). `pyo3`'s
+/// `HashMap<K, V, H>` conversions are generic over the hasher, so downstream consumers
+/// (including the Python binding) can accept this directly without a SipHash re-hash.
+pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32> {
     // makes a dict of permutations of the pirates + odds
     // this is why the bet table could be very long
 
@@ -427,7 +432,7 @@ pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> std::collections:
             }
         }
     }
-    res.into_iter().collect()
+    res
 }
 
 #[derive(Debug, Clone)]
@@ -508,9 +513,13 @@ pub fn build_chance_objects(
     sorted.sort_unstable_by_key(|&(k, _)| k);
 
     let mut cumulative: f64 = 0.0;
-    let mut tail: f64 = 1.0;
     let mut chances: Vec<Chance> = Vec::with_capacity(sorted.len());
     for (key, value) in sorted {
+        // tail is the probability mass beyond the previous row, i.e. 1 - cumulative
+        // before this row is added. Deriving it from `cumulative` (a single
+        // subtraction) keeps the tail and cumulative columns mutually consistent;
+        // accumulating `tail -= value` separately let the two drift by a few ULPs.
+        let tail = 1.0 - cumulative;
         cumulative += value;
         chances.push(Chance {
             value: key,
@@ -518,8 +527,6 @@ pub fn build_chance_objects(
             cumulative,
             tail,
         });
-
-        tail -= value;
     }
     chances
 }

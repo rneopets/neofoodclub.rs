@@ -508,9 +508,13 @@ pub fn build_chance_objects(
     sorted.sort_unstable_by_key(|&(k, _)| k);
 
     let mut cumulative: f64 = 0.0;
-    let mut tail: f64 = 1.0;
     let mut chances: Vec<Chance> = Vec::with_capacity(sorted.len());
     for (key, value) in sorted {
+        // tail is the probability mass beyond the previous row, i.e. 1 - cumulative
+        // before this row is added. Deriving it from `cumulative` (a single
+        // subtraction) keeps the tail and cumulative columns mutually consistent;
+        // accumulating `tail -= value` separately let the two drift by a few ULPs.
+        let tail = 1.0 - cumulative;
         cumulative += value;
         chances.push(Chance {
             value: key,
@@ -518,8 +522,6 @@ pub fn build_chance_objects(
             cumulative,
             tail,
         });
-
-        tail -= value;
     }
     chances
 }

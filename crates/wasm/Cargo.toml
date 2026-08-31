@@ -7,7 +7,9 @@ edition = "2021"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-neofoodclub = { path = "../core" }
+# no-default-features: drop the `tables` feature (comfy-table) from the wasm
+# build; this crate never uses Bets::table / Bets::stats_table.
+neofoodclub = { path = "../core", default-features = false }
 wasm-bindgen = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde-wasm-bindgen = "0.6"

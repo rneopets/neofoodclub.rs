@@ -1220,6 +1220,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "tables")]
     fn test_bets_table() {
         let nfc = make_test_nfc();
 
@@ -1253,6 +1254,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "tables")]
     fn test_bets_stats_table() {
         let nfc = make_test_nfc();
 
@@ -1285,6 +1287,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(feature = "tables")]
     fn test_bets_stats_table_reverse_mer() {
         let nfc = make_test_nfc_with_modifier(
             Modifier::new(ModifierFlags::REVERSE.bits(), None, None).unwrap(),

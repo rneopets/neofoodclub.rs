@@ -1,7 +1,12 @@
+#[cfg(feature = "tables")]
 use comfy_table::Table;
 
+#[cfg(feature = "tables")]
+use crate::arena::{Arenas, ARENA_NAMES};
+#[cfg(feature = "tables")]
+use crate::pirates::PartialPirateThings;
+
 use crate::{
-    arena::{Arenas, ARENA_NAMES},
     error::NfcError,
     math::{
         amounts_hash_to_bet_amounts, bet_amounts_to_amounts_hash, bets_hash_to_bet_binaries,
@@ -10,7 +15,6 @@ use crate::{
     },
     nfc::NeoFoodClub,
     odds::Odds,
-    pirates::PartialPirateThings,
 };
 
 /// A representation of a set of bet amounts
@@ -390,6 +394,7 @@ impl Bets {
 
     /// Returns the pirate names for one bet row, in arena order, with an
     /// empty string for arenas the bet didn't pick.
+    #[cfg(feature = "tables")]
     fn pirate_name_row(bet_indices: &[u8], arenas: &Arenas) -> Vec<String> {
         bet_indices
             .iter()
@@ -407,6 +412,7 @@ impl Bets {
     }
 
     /// Returns a table visualization of the bets
+    #[cfg(feature = "tables")]
     pub fn table(&self, nfc: &NeoFoodClub) -> String {
         let mut table = Table::new();
 
@@ -431,6 +437,7 @@ impl Bets {
     }
 
     /// Returns a table visualization of the bets, with stats
+    #[cfg(feature = "tables")]
     pub fn stats_table(&self, nfc: &NeoFoodClub) -> String {
         let mut table = Table::new();
 

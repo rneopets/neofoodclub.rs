@@ -291,6 +291,7 @@ mod payout_table_tests {
     }
 
     #[test]
+    #[cfg(feature = "tables")]
     fn test_stats_table_no_ne_column_without_bet_amounts() {
         let nfc = make_nfc_no_amount();
         let bets = nfc.make_bustproof_bets().unwrap();

@@ -13,8 +13,15 @@ bitflags = "2.11.0"
 serde_qs = "1.0.0"
 chrono = "0.4.43"
 chrono-tz = "0.10.4"
-comfy-table = { version = "8.0.0", default-features = false }
+comfy-table = { version = "8.0.0", default-features = false, optional = true }
 rustc-hash = "2"
+
+[features]
+# Default-on so existing users keep Bets::table / Bets::stats_table. Consumers
+# that don't need the text tables (e.g. the wasm build) can drop comfy-table
+# from their dependency graph with --no-default-features.
+default = ["tables"]
+tables = ["dep:comfy-table"]
 
 [lib]
 name = "neofoodclub"
@@ -22,6 +29,8 @@ name = "neofoodclub"
 [[example]]
 name = "all_bets_table"
 path = "examples/all_bets_table.rs"
+# Only builds with the `tables` feature (default-on), which it demonstrates.
+required-features = ["tables"]
 
 [[bench]]
 name = "math_benches"

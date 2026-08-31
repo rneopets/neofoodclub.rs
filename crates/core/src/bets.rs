@@ -184,7 +184,23 @@ impl Bets {
 
     /// Returns the sum of net expected value of the bets
     pub fn net_expected(&self, nfc: &NeoFoodClub) -> f64 {
-        self.net_expected_list(nfc).iter().sum()
+        let Some(amounts) = &self.bet_amounts else {
+            return 0.0;
+        };
+
+        // Fused scalar sum: avoids building the full list (and its allocation)
+        // just to reduce it. Same per-element math and order as net_expected_list,
+        // so the result is bit-identical to `net_expected_list(nfc).iter().sum()`.
+        let data = nfc.round_dict_data();
+        self.array_indices
+            .iter()
+            .zip(amounts.iter())
+            .map(|(i, a)| {
+                let er = data.ers[*i];
+                let amount = a.unwrap_or(0) as f64;
+                amount.mul_add(er, -amount)
+            })
+            .sum()
     }
 
     /// Returns the expected return of each bet
@@ -197,7 +213,11 @@ impl Bets {
 
     /// Returns the sum of expected return of the bets
     pub fn expected_return(&self, nfc: &NeoFoodClub) -> f64 {
-        self.expected_return_list(nfc).iter().sum()
+        // Fused scalar sum: avoids building the full list (and its allocation)
+        // just to reduce it. Same per-element order as expected_return_list, so the
+        // result is bit-identical to `expected_return_list(nfc).iter().sum()`.
+        let data = nfc.round_dict_data();
+        self.array_indices.iter().map(|&i| data.ers[i]).sum()
     }
 
     /// Fills the bet amounts in-place with the maximum possible amount to hit 1 million.

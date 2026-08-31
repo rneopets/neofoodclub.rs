@@ -435,7 +435,7 @@ pub(crate) fn expand_ib_object_fx(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap
             }
         }
     }
-    res.into_iter().collect()
+    res
 }
 
 #[derive(Debug, Clone)]

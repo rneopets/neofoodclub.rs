@@ -302,6 +302,24 @@ impl Bets {
             .map(|amounts| bet_amounts_to_amounts_hash(amounts))
     }
 
+    /// Returns the identity of this set of bets: its list of array indices,
+    /// sorted. This is the amountless representation of a unique bet set,
+    /// two sets with the same bets, in any order and with any amounts (or none),
+    /// share an identity.
+    pub fn identity(&self) -> Vec<usize> {
+        let mut indices = self.array_indices.clone();
+
+        indices.sort_unstable();
+
+        indices
+    }
+
+    /// Returns whether or not this set of bets is the same as another,
+    /// ignoring bet order and amounts.
+    pub fn is_same_as(&self, other: &Bets) -> bool {
+        self.identity() == other.identity()
+    }
+
     /// Returns whether or not this set is capable of busting
     /// if there are no odds, returns None
     pub fn is_bustproof(&self) -> bool {

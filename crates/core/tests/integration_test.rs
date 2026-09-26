@@ -685,6 +685,84 @@ mod tests {
     }
 
     #[test]
+    fn test_is_same_as_true_same_order() {
+        let nfc = make_test_nfc();
+        let a = nfc.make_bets_from_binaries(vec![0x1, 0x2, 0x4]);
+        let b = nfc.make_bets_from_binaries(vec![0x1, 0x2, 0x4]);
+
+        assert!(a.is_same_as(&b));
+    }
+
+    #[test]
+    fn test_is_same_as_true_shuffled_order() {
+        let nfc = make_test_nfc();
+        let a = nfc.make_bets_from_binaries(vec![0x1, 0x2, 0x4]);
+        let b = nfc.make_bets_from_binaries(vec![0x4, 0x1, 0x2]);
+
+        assert!(a.is_same_as(&b));
+    }
+
+    #[test]
+    fn test_is_same_as_false_different_bet() {
+        let nfc = make_test_nfc();
+        let a = nfc.make_bets_from_binaries(vec![0x1, 0x2, 0x4]);
+        let b = nfc.make_bets_from_binaries(vec![0x1, 0x2, 0x8]);
+
+        assert!(!a.is_same_as(&b));
+    }
+
+    #[test]
+    fn test_is_same_as_false_duplicate_bet() {
+        let nfc = make_test_nfc();
+        let a = nfc.make_bets_from_binaries(vec![0x1, 0x2]);
+        let b = nfc.make_bets_from_binaries(vec![0x1, 0x2, 0x2]);
+
+        assert!(!a.is_same_as(&b));
+    }
+
+    #[test]
+    fn test_is_same_as_true_empty() {
+        let nfc = make_test_nfc();
+        let a = nfc.make_bets_from_binaries(vec![]);
+        let b = nfc.make_bets_from_binaries(vec![]);
+
+        assert!(a.is_same_as(&b));
+    }
+
+    #[test]
+    fn test_identity_sorted() {
+        let nfc = make_test_nfc();
+        let a = nfc.make_bets_from_binaries(vec![0x4, 0x1, 0x2]);
+
+        let a_identity = a.identity();
+        let b_identity = nfc.make_bets_from_binaries(vec![0x1, 0x2, 0x4]).identity();
+
+        assert_eq!(a_identity, b_identity);
+        let mut sorted = a_identity.clone();
+        sorted.sort_unstable();
+        assert_eq!(a_identity, sorted);
+    }
+
+    #[test]
+    fn test_identity_ignores_amounts() {
+        let nfc = make_test_nfc();
+        let mut a = nfc.make_bets_from_binaries(vec![0x1, 0x2]);
+        let b = nfc.make_bets_from_binaries(vec![0x1, 0x2]);
+
+        a.set_bet_amounts(&Some(BetAmounts::AllSame(99))).unwrap();
+
+        assert_eq!(a.identity(), b.identity());
+    }
+
+    #[test]
+    fn test_identity_empty() {
+        let nfc = make_test_nfc();
+        let a = nfc.make_bets_from_binaries(vec![]);
+
+        assert!(a.identity().is_empty());
+    }
+
+    #[test]
     fn test_bets_is_empty() {
         let nfc = make_test_nfc();
         let bets = nfc.make_tenbet_bets(0x88800);

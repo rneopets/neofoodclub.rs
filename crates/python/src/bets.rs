@@ -95,6 +95,14 @@ impl Bets {
         self.inner.is_guaranteed_win(&nfc.inner)
     }
 
+    fn identity(&self) -> Vec<usize> {
+        self.inner.identity()
+    }
+
+    fn is_same_as(&self, other: &Self) -> bool {
+        self.inner.is_same_as(&other.inner)
+    }
+
     fn odds_values(&self, nfc: &NeoFoodClub) -> Vec<u32> {
         self.inner.odds_values(&nfc.inner)
     }

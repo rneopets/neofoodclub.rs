@@ -433,6 +433,12 @@ class Bets:
     def is_guaranteed_win(self, nfc: NeoFoodClub) -> bool:
         """:class:`bool`: Whether or not the bets are guaranteed to win."""
 
+    def identity(self) -> tuple[int, ...]:
+        """Tuple[:class:`int`, ...]: The sorted array indices identifying this set of bets, ignoring order and amounts."""
+
+    def is_same_as(self, other: Bets) -> bool:
+        """:class:`bool`: Whether or not this set of bets is the same as another, ignoring bet order and amounts."""
+
     def odds_values(self, nfc: NeoFoodClub) -> tuple[int, ...]:
         """Tuple[:class:`int`, ...]: The odds of the bets."""
 

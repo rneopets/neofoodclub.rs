@@ -19,14 +19,14 @@ repos:
         args: [--fix]
       - id: ruff-format
         files: ^crates/python/
-  - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.407
-    hooks:
-      - id: pyright
-        files: ^crates/python/
-        args: ["-p", "crates/python"]
   - repo: local
     hooks:
+      - id: ty
+        name: Run ty type checker
+        entry: ty check --project crates/python
+        language: system
+        files: ^crates/python/
+        pass_filenames: false
       - id: cargo-clippy
         name: Run cargo clippy
         entry: cargo clippy --fix --allow-dirty --allow-staged --workspace --all-targets --all-features --locked -- -D warnings

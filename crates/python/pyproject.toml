@@ -40,20 +40,17 @@ exclude_lines = [
 [tool.maturin]
 python-source = "python"
 
-[tool.pyright]
+[tool.ty.src]
 include = [
     "python/neofoodclub",
 ]
-exclude = [
-    "**/__pycache__",
-]
-extraPaths = ["python"]
-reportUnnecessaryTypeIgnoreComment = "warning"
-reportUnusedImport = "error"
-pythonVersion = "3.11"
-typeCheckingMode = "basic"
-venvPath = "."
-venv = ".venv"
+
+[tool.ty.environment]
+extra-paths = ["python"]
+python-version = "3.11"
+
+[tool.ty.rules]
+unused-type-ignore-comment = "warn"
 
 [tool.ruff]
 show-fixes = true

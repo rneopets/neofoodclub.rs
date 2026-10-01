@@ -179,6 +179,29 @@ mod tests {
     }
 
     #[test]
+    fn test_make_probabilities_all_thirteen_arena_is_pinned() {
+        // Documents a deliberate property of the reference model (NOT a bug to fix):
+        // pirates at odds 13 are pinned to std = 0.05 and excluded from rectification
+        // (the rectify loop only reaches level 12). An arena where all four pirates
+        // are at odds 13 therefore has no adjustable pirate and its probabilities sum
+        // to 4 x 0.05 = 0.2 instead of 1.0. This faithfully mirrors the original
+        // Python model; "normalizing" it would change ER/NE/chance/payout for any
+        // round containing an all-13 arena, so the behavior is locked in here.
+        let probs = make_probabilities([[1, 13, 13, 13, 13]; 5]);
+        for arena in probs.iter() {
+            assert_eq!(arena[0], 1.0);
+            for &p in arena[1..5].iter() {
+                assert!((p - 0.05).abs() < EPSILON, "expected pinned 0.05, got {p}");
+            }
+            let sum: f64 = arena[1..5].iter().sum();
+            assert!(
+                (sum - 0.2).abs() < EPSILON,
+                "all-13 arena sums to {sum}, not 0.2"
+            );
+        }
+    }
+
+    #[test]
     fn test_original_model_new_matches_make_probabilities() {
         use crate::round_data::RoundData;
 

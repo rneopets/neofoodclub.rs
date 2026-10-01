@@ -9,6 +9,17 @@ use crate::error::NfcError;
 pub const BET_AMOUNT_MIN: u32 = 1;
 pub const BET_AMOUNT_MAX: u32 = 70304;
 
+/// The largest bet amount that can round-trip through a hash.
+///
+/// `bet_amounts_to_amounts_hash` encodes each amount in a base-52 domain of exactly
+/// `BET_AMOUNT_MAX` (70304) codes: one for "no amount" (`None`) plus amounts
+/// `1..=70303`. There is no code left for the value `BET_AMOUNT_MAX` itself — it
+/// wraps around to collide with `None`, so hashing an amount of 70304 silently
+/// loses it. Settable amounts therefore clamp to this value instead of
+/// `BET_AMOUNT_MAX`. `BET_AMOUNT_MAX` is kept (unchanged) as the hash base and
+/// public constant.
+pub const BET_AMOUNT_MAX_SETTABLE: u32 = 70_303;
+
 // WARNING: the literal integers in this file switches between hex and binary willy-nilly, mostly for readability.
 
 // each arena, as if they were full. this is impossible to actually do.
@@ -29,6 +40,9 @@ const CONVERT_PIR_IB: [u32; 5] = [0xFFFFF, 0x88888, 0x44444, 0x22222, 0x11111];
 /// ```
 #[inline]
 pub fn pirate_binary(index: u8, arena: u8) -> u32 {
+    // `index` is a 1-based pirate slot (0 = "no pirate", 1..=4 = the four pirates).
+    // An out-of-range index would silently land in a neighboring arena, so fail fast.
+    debug_assert!(index <= 4, "pirate_binary index out of range: {index}");
     let mask = (index != 0) as u32 * u32::MAX;
     let shift = (index.wrapping_sub(1) as u32 + arena as u32 * 4) & 31;
     (0x80000u32 >> shift) & mask
@@ -90,6 +104,9 @@ pub fn binary_to_indices(binary: u32) -> [u8; 5] {
 /// `binary` must be a valid non-zero bet binary.
 #[inline]
 pub fn binary_to_index(binary: u32) -> usize {
+    // A zero binary decodes to all-zero pirate indices, and the trailing `- 1`
+    // below would underflow (usize). Valid bet binaries are always non-zero.
+    debug_assert_ne!(binary, 0, "binary_to_index called with a zero binary");
     let [a, b, c, d, e] = binary_to_indices(binary);
     a as usize * 625 + b as usize * 125 + c as usize * 25 + d as usize * 5 + e as usize - 1
 }

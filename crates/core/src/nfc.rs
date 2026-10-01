@@ -4,7 +4,7 @@ use crate::arena::Arenas;
 use crate::bets::Bets;
 use crate::error::NfcError;
 use crate::math::{
-    make_round_dicts, pirates_binary, RoundDictData, BET_AMOUNT_MAX, BET_AMOUNT_MIN,
+    make_round_dicts, pirates_binary, RoundDictData, BET_AMOUNT_MAX_SETTABLE, BET_AMOUNT_MIN,
 };
 use crate::modifier::{Modifier, ModifierFlags};
 use crate::oddschange::OddsChange;
@@ -97,7 +97,7 @@ impl NeoFoodClub {
 
     /// Sets the bet amount
     pub fn set_bet_amount(&mut self, amount: Option<u32>) {
-        self.bet_amount = amount.map(|x| x.clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX));
+        self.bet_amount = amount.map(|x| x.clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX_SETTABLE));
         self.clear_ranking_caches();
     }
 

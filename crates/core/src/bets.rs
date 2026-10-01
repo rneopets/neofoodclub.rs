@@ -10,8 +10,8 @@ use crate::{
     error::NfcError,
     math::{
         amounts_hash_to_bet_amounts, bet_amounts_to_amounts_hash, bets_hash_to_bet_binaries,
-        bets_hash_value, binary_to_index, binary_to_indices, pirates_binary, BET_AMOUNT_MAX,
-        BET_AMOUNT_MIN,
+        bets_hash_value, binary_to_index, binary_to_indices, pirates_binary,
+        BET_AMOUNT_MAX_SETTABLE, BET_AMOUNT_MIN,
     },
     nfc::NeoFoodClub,
     odds::Odds,
@@ -45,7 +45,7 @@ impl BetAmounts {
                 if length == 0 {
                     Ok(None)
                 } else {
-                    let clamped = (*amount).clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX);
+                    let clamped = (*amount).clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX_SETTABLE);
                     Ok(Some(vec![Some(clamped); length]))
                 }
             }
@@ -56,7 +56,7 @@ impl BetAmounts {
     /// Creates a new BetAmounts from a single bet amount
     /// This creates an AllSame variant which can never cause length mismatch errors
     pub fn from_amount(amount: u32) -> Self {
-        if !(BET_AMOUNT_MIN..=BET_AMOUNT_MAX).contains(&amount) {
+        if !(BET_AMOUNT_MIN..=BET_AMOUNT_MAX_SETTABLE).contains(&amount) {
             return BetAmounts::None;
         }
 
@@ -148,7 +148,7 @@ impl Bets {
         self.bet_amounts = Some(
             amounts
                 .iter()
-                .map(|x| x.map(|x| x.clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX)))
+                .map(|x| x.map(|x| x.clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX_SETTABLE)))
                 .collect(),
         );
 
@@ -163,7 +163,7 @@ impl Bets {
             return;
         }
 
-        let clamped = amount.clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX);
+        let clamped = amount.clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX_SETTABLE);
         self.bet_amounts = Some(vec![Some(clamped); self.array_indices.len()]);
     }
 

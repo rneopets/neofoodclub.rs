@@ -483,8 +483,14 @@ impl NeoFoodClub {
             .fold(0, |acc, (bet_index, array_index)| {
                 let bet_bin = data.bins[*array_index];
                 if bet_bin & winners_binary == bet_bin {
-                    acc + (data.odds[*array_index] * bet_amounts[bet_index].unwrap_or(0))
-                        .clamp(0, 1_000_000)
+                    // Multiply in u64: `odds * amount` can exceed u32::MAX for a
+                    // high-odds bet with a manually-set amount (e.g. odds 371,293 x
+                    // amount 70,304). A u32 product would overflow *before* the clamp
+                    // (panic in debug, silent wrap in release). The per-bet payout is
+                    // capped at 1_000_000, so the result always fits back in u32.
+                    let win = (data.odds[*array_index] as u64)
+                        * bet_amounts[bet_index].unwrap_or(0) as u64;
+                    acc + win.min(1_000_000) as u32
                 } else {
                     acc
                 }

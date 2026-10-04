@@ -122,16 +122,16 @@ pub fn compute_payout_tables(
     serde_wasm_bindgen::to_value(&out).map_err(|e| JsError::new(&e.to_string()))
 }
 
-/// Replaces `computePirateBinary(arenaIndex, pirateIndex)`. Note the argument
+/// Replaces `computePirateBit(arenaIndex, pirateIndex)`. Note the argument
 /// order is swapped relative to `neofoodclub::math::pirate_bit(index, arena)`.
-#[wasm_bindgen(js_name = computePirateBinary)]
-pub fn compute_pirate_binary(arena_index: u8, pirate_index: u8) -> u32 {
+#[wasm_bindgen(js_name = computePirateBit)]
+pub fn compute_pirate_bit(arena_index: u8, pirate_index: u8) -> u32 {
     math::pirate_bit(pirate_index, arena_index)
 }
 
-/// Replaces `computePiratesBinary`. `pirates` must have exactly 5 elements.
-#[wasm_bindgen(js_name = computePiratesBinary)]
-pub fn compute_pirates_binary(pirates: Vec<u8>) -> Result<u32, JsError> {
+/// Replaces `computeIndicesToBinary`. `pirates` must have exactly 5 elements.
+#[wasm_bindgen(js_name = computeIndicesToBinary)]
+pub fn compute_indices_to_binary(pirates: Vec<u8>) -> Result<u32, JsError> {
     let indices: [u8; 5] = pirates
         .try_into()
         .map_err(|_| JsError::new("expected exactly 5 elements"))?;
@@ -181,20 +181,20 @@ mod tests {
     }
 
     #[test]
-    fn compute_pirate_binary_matches_underlying_math_fn() {
-        assert_eq!(compute_pirate_binary(0, 1), math::pirate_bit(1, 0));
+    fn compute_pirate_bit_matches_underlying_math_fn() {
+        assert_eq!(compute_pirate_bit(0, 1), math::pirate_bit(1, 0));
     }
 
     #[test]
-    fn compute_pirates_binary_happy_path() {
-        let bin = compute_pirates_binary(vec![1, 2, 3, 4, 1]).unwrap();
+    fn compute_indices_to_binary_happy_path() {
+        let bin = compute_indices_to_binary(vec![1, 2, 3, 4, 1]).unwrap();
         assert_eq!(bin, math::indices_to_binary([1, 2, 3, 4, 1]));
     }
 
     #[test]
     fn compute_binary_to_pirates_round_trips_with_pirates_binary() {
         let indices = vec![1, 2, 3, 4, 1];
-        let bin = compute_pirates_binary(indices.clone()).unwrap();
+        let bin = compute_indices_to_binary(indices.clone()).unwrap();
         assert_eq!(compute_binary_to_pirates(bin), indices);
     }
 }

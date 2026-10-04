@@ -87,7 +87,7 @@ def test_bets_with_amounts_above_the_hash_max(nfc: NeoFoodClub) -> None:
     assert bets.amounts_hash is not None
 
     bets.set_amounts_with_list((Math.BET_AMOUNT_HASH_MAX + 1,) * 10)
-    assert tuple(bets.bet_amounts or ()) == (Math.BET_AMOUNT_HASH_MAX + 1,) * 10
+    assert bets.bet_amounts == [Math.BET_AMOUNT_HASH_MAX + 1] * 10
     assert bets.amounts_hashable is False
     with pytest.raises(ValueError, match="70304"):
         _ = bets.amounts_hash

@@ -1000,8 +1000,8 @@ mod tests {
 
     #[test]
     fn test_bustproof_amounts_with_a_huge_bet_amount_do_not_overflow() {
-        // amount * lowest_odds is computed in u64. u32::MAX times any odds >= 2 would
-        // overflow a u32 (a panic in debug builds).
+        // amount * lowest_odds is computed in u64. Realistic amounts don't overflow u32 here
+        // (the lowest odds are small), so use u32::MAX, which overflows for any odds >= 2.
         let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(u32::MAX), None, None)
             .expect("valid round");
         let bets = nfc.make_bustproof_bets().unwrap();

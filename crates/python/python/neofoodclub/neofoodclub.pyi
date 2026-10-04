@@ -397,8 +397,8 @@ class Odds:
 
 class Bets:
     @property
-    def bet_amounts(self) -> tuple[int | None, ...] | None:
-        """Optional[Tuple[Optional[:class:`int`], ...]]: The amounts of the bets."""
+    def bet_amounts(self) -> list[int | None] | None:
+        """Optional[List[Optional[:class:`int`]]]: The amounts of the bets."""
 
     def remove_amounts(self) -> None:
         """Removes the bet amounts from the bets."""

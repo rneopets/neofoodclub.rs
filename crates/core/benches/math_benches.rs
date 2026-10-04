@@ -62,9 +62,7 @@ fn bench_bets_hash_to_bet_count() {
 #[divan::bench]
 fn bench_bet_amounts_to_amounts_hash() {
     let amounts = vec![Some(50), Some(100), Some(150), Some(200), Some(250)];
-    divan::black_box(math::bet_amounts_to_amounts_hash(divan::black_box(
-        &amounts,
-    )));
+    divan::black_box(math::bet_amounts_to_amounts_hash(divan::black_box(&amounts)).unwrap());
 }
 
 #[divan::bench]
@@ -467,7 +465,7 @@ fn bench_bets_hash() {
 fn bench_amounts_hash() {
     let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let bets = nfc.make_max_ter_bets();
-    divan::black_box(bets.amounts_hash());
+    divan::black_box(bets.amounts_hash().unwrap());
 }
 
 // Modifier benchmarks

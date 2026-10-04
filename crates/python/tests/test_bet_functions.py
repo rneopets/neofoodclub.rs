@@ -79,6 +79,31 @@ def test_bets_set_bet_amount_none(nfc: NeoFoodClub) -> None:
     assert bets.amounts_hash is None
 
 
+def test_bets_with_amounts_above_the_hash_max(nfc: NeoFoodClub) -> None:
+    # amounts above Math.BET_AMOUNT_HASH_MAX are valid, they just can't be hashed
+    bets = nfc.make_max_ter_bets()
+    bets.set_amounts_with_list((8000,) * 10)
+    assert bets.amounts_hashable is True
+    assert bets.amounts_hash is not None
+
+    bets.set_amounts_with_list((Math.BET_AMOUNT_HASH_MAX + 1,) * 10)
+    assert tuple(bets.bet_amounts or ()) == (Math.BET_AMOUNT_HASH_MAX + 1,) * 10
+    assert bets.amounts_hashable is False
+    with pytest.raises(ValueError, match="70304"):
+        _ = bets.amounts_hash
+    assert "amounts_hash=None" in repr(bets)
+
+    # the URL still opens the bets, just without amounts
+    url = bets.make_url(nfc, include_domain=False)
+    assert f"&b={bets.bets_hash}" in url
+    assert "&a=" not in url
+
+
+def test_bet_amount_above_the_hash_max_is_not_capped(nfc: NeoFoodClub) -> None:
+    nfc.bet_amount = 500_000
+    assert nfc.bet_amount == 500_000
+
+
 def test_bet_equivalence(
     nfc: NeoFoodClub,
     crazy_test_hash: str,

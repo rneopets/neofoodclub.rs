@@ -89,3 +89,19 @@ def test_build_payout_regions() -> None:
         524287: 0,
         589823: 1,
     }
+
+
+def test_bet_amount_hash_max_is_the_largest_representable_amount() -> None:
+    assert Math.BET_AMOUNT_HASH_MAX == 70303
+
+    hash_ = Math.bet_amounts_to_amounts_hash([Math.BET_AMOUNT_HASH_MAX])
+    assert Math.amounts_hash_to_bet_amounts(hash_) == (Math.BET_AMOUNT_HASH_MAX,)
+
+
+@pytest.mark.parametrize("amount", [70304, 80000, 500_000])
+def test_bet_amounts_to_amounts_hash_rejects_unrepresentable_amounts(
+    amount: int,
+) -> None:
+    # these used to wrap around (80000 -> 9696) or collide with "no amount" (70304)
+    with pytest.raises(ValueError, match=str(amount)):
+        Math.bet_amounts_to_amounts_hash([50, amount])

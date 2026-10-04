@@ -22,7 +22,8 @@ impl From<Bets> for BetsOut {
             indices: bets.get_indices(),
             amounts: bets.bet_amounts.clone(),
             bets_hash: bets.bets_hash(),
-            amounts_hash: bets.amounts_hash(),
+            // null when an amount is over the hash maximum; the amounts themselves are still returned
+            amounts_hash: bets.amounts_hash().ok().flatten(),
         }
     }
 }

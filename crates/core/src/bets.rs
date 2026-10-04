@@ -11,7 +11,7 @@ use crate::{
     math::{
         amounts_hash_to_bet_amounts, bet_amounts_to_amounts_hash, bet_indices_to_bets_hash,
         bets_hash_to_bet_binaries, binary_to_indices, binary_to_table_index, indices_to_binary,
-        BET_AMOUNT_MAX_SETTABLE, BET_AMOUNT_MIN,
+        BET_AMOUNT_HASH_MAX, BET_AMOUNT_MIN,
     },
     nfc::NeoFoodClub,
     odds::Odds,
@@ -45,8 +45,8 @@ impl BetAmounts {
                 if length == 0 {
                     Ok(None)
                 } else {
-                    let clamped = (*amount).clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX_SETTABLE);
-                    Ok(Some(vec![Some(clamped); length]))
+                    let amount = (*amount).max(BET_AMOUNT_MIN);
+                    Ok(Some(vec![Some(amount); length]))
                 }
             }
             BetAmounts::None => Ok(None),
@@ -56,7 +56,7 @@ impl BetAmounts {
     /// Creates a new BetAmounts from a single bet amount
     /// This creates an AllSame variant which can never cause length mismatch errors
     pub fn from_amount(amount: u32) -> Self {
-        if !(BET_AMOUNT_MIN..=BET_AMOUNT_MAX_SETTABLE).contains(&amount) {
+        if amount < BET_AMOUNT_MIN {
             return BetAmounts::None;
         }
 
@@ -148,7 +148,7 @@ impl Bets {
         self.bet_amounts = Some(
             amounts
                 .iter()
-                .map(|x| x.map(|x| x.clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX_SETTABLE)))
+                .map(|x| x.map(|x| x.max(BET_AMOUNT_MIN)))
                 .collect(),
         );
 
@@ -163,8 +163,8 @@ impl Bets {
             return;
         }
 
-        let clamped = amount.clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX_SETTABLE);
-        self.bet_amounts = Some(vec![Some(clamped); self.array_indices.len()]);
+        let amount = amount.max(BET_AMOUNT_MIN);
+        self.bet_amounts = Some(vec![Some(amount); self.array_indices.len()]);
     }
 
     /// Returns the net expected value of each bet
@@ -295,11 +295,25 @@ impl Bets {
         bet_indices_to_bets_hash(self.get_indices())
     }
 
-    /// Returns a string of the hash of the bet amounts, if it can
-    pub fn amounts_hash(&self) -> Option<String> {
+    /// Returns a string of the hash of the bet amounts, or `None` if there are no amounts.
+    ///
+    /// Returns an error if any amount is above [`BET_AMOUNT_HASH_MAX`], since the hash
+    /// cannot represent it. Use [`Bets::amounts_hashable`] to check beforehand.
+    pub fn amounts_hash(&self) -> Result<Option<String>, NfcError> {
         self.bet_amounts
             .as_ref()
             .map(|amounts| bet_amounts_to_amounts_hash(amounts))
+            .transpose()
+    }
+
+    /// Whether every bet amount fits in an amounts hash (is at most
+    /// [`BET_AMOUNT_HASH_MAX`]). True when there are no amounts.
+    pub fn amounts_hashable(&self) -> bool {
+        self.bet_amounts
+            .iter()
+            .flatten()
+            .flatten()
+            .all(|&amount| amount <= BET_AMOUNT_HASH_MAX)
     }
 
     /// Returns the identity of this set of bets: its list of array indices,
@@ -390,11 +404,12 @@ impl Bets {
             .odds_values(nfc)
             .iter()
             .zip(amounts.iter().flatten())
-            .map(|(odds, amount)| odds * amount)
+            // u64: odds * amount can exceed u32::MAX now that amounts are not capped at 70303
+            .map(|(&odds, &amount)| odds as u64 * amount as u64)
             .min()
             .unwrap();
 
-        highest_bet_amount < &lowest_winning_bet_amount
+        (*highest_bet_amount as u64) < lowest_winning_bet_amount
     }
 
     /// Returns the odds of the bets

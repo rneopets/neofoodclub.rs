@@ -67,8 +67,15 @@ impl Bets {
     }
 
     #[getter]
-    fn amounts_hash(&self) -> Option<String> {
-        self.inner.amounts_hash()
+    fn amounts_hash(&self) -> PyResult<Option<String>> {
+        self.inner
+            .amounts_hash()
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
+    }
+
+    #[getter]
+    fn amounts_hashable(&self) -> bool {
+        self.inner.amounts_hashable()
     }
 
     #[getter]
@@ -130,7 +137,7 @@ impl Bets {
         format!(
             "<Bets bets_hash={:?} amounts_hash={:?}>",
             self.inner.bets_hash(),
-            self.inner.amounts_hash()
+            self.inner.amounts_hash().ok().flatten()
         )
     }
 

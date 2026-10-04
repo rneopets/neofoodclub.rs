@@ -3,9 +3,7 @@ use std::cell::OnceCell;
 use crate::arena::Arenas;
 use crate::bets::Bets;
 use crate::error::NfcError;
-use crate::math::{
-    build_round_tables, indices_to_binary, RoundTables, BET_AMOUNT_MAX_SETTABLE, BET_AMOUNT_MIN,
-};
+use crate::math::{build_round_tables, indices_to_binary, RoundTables, BET_AMOUNT_MIN};
 use crate::modifier::{Modifier, ModifierFlags};
 use crate::oddschange::OddsChange;
 use crate::round_data::{RoundData, RoundDataRaw};
@@ -97,7 +95,7 @@ impl NeoFoodClub {
 
     /// Sets the bet amount
     pub fn set_bet_amount(&mut self, amount: Option<u32>) {
-        self.bet_amount = amount.map(|x| x.clamp(BET_AMOUNT_MIN, BET_AMOUNT_MAX_SETTABLE));
+        self.bet_amount = amount.map(|x| x.max(BET_AMOUNT_MIN));
         self.clear_ranking_caches();
     }
 
@@ -454,7 +452,9 @@ impl NeoFoodClub {
         if let Some(bets) = bets {
             url.push_str(&format!("&b={}", bets.bets_hash()));
 
-            if let Some(amounts_hash) = bets.amounts_hash() {
+            // Amounts over BET_AMOUNT_HASH_MAX can't be hashed, so the link is built
+            // without them rather than failing: it still opens the right bets.
+            if let Ok(Some(amounts_hash)) = bets.amounts_hash() {
                 url.push_str(&format!("&a={amounts_hash}"));
             }
         }

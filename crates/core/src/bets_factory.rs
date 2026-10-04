@@ -330,10 +330,14 @@ impl NeoFoodClub {
         if let Some(mut bets) = bets {
             if let Some(amount) = self.bet_amount {
                 let odds = bets.odds_values(self);
-                let lowest = odds.iter().min().expect("Odds vector is empty, somehow");
+                let lowest = *odds.iter().min().expect("Odds vector is empty, somehow") as u64;
 
-                let bet_amounts: Vec<Option<u32>> =
-                    odds.iter().map(|odd| Some(amount * lowest / odd)).collect();
+                // u64: amount * lowest can exceed u32::MAX (e.g. 500,000 x 371,293). The
+                // result is at most `amount`, so it fits back in u32.
+                let bet_amounts: Vec<Option<u32>> = odds
+                    .iter()
+                    .map(|&odd| Some((amount as u64 * lowest / odd as u64) as u32))
+                    .collect();
 
                 bets.bet_amounts = Some(bet_amounts);
             }

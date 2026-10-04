@@ -57,7 +57,7 @@ class Math:
     BET_AMOUNT_MAX: int
 
     @staticmethod
-    def pirate_binary(index: int, arena: int) -> int:
+    def pirate_bit(index: int, arena: int) -> int:
         """:class:`int`: Returns the bet-binary representation of a pirate in an arena.
 
         Parameters
@@ -70,7 +70,7 @@ class Math:
         """
 
     @staticmethod
-    def pirates_binary(bets_indices: Sequence[int]) -> int:
+    def indices_to_binary(bets_indices: Sequence[int]) -> int:
         """:class:`int`: Returns the bet-binary representation of bet indices.
 
         Turns something like (1, 2, 3, 4, 2) for example into 0b10000100001000010100, a bet-binary number.
@@ -96,7 +96,7 @@ class Math:
         """
 
     @staticmethod
-    def bets_hash_to_bets_count(bets_hash: str, /) -> int:
+    def bets_hash_to_bet_count(bets_hash: str, /) -> int:
         """:class:`int`: Returns the amount of bets for a given bets hash.
 
         Parameters
@@ -118,7 +118,7 @@ class Math:
         """
 
     @staticmethod
-    def bets_indices_to_bet_binaries(
+    def bet_indices_to_bet_binaries(
         bets_indices: Sequence[Sequence[int]],
         /,
     ) -> tuple[int, ...]:
@@ -156,7 +156,7 @@ class Math:
         """
 
     @staticmethod
-    def bets_hash_value(bets_indices: Sequence[Sequence[int]]) -> str:
+    def bet_indices_to_bets_hash(bets_indices: Sequence[Sequence[int]]) -> str:
         """:class:`str`: Returns a hash for the bets indices provided.
 
         Parameters
@@ -177,16 +177,45 @@ class Math:
 
         """
     @staticmethod
-    def build_chance_objects(
+    def build_chances(
         bets: Sequence[Sequence[int]],
         bet_odds: Sequence[int],
         probabilities: Sequence[Sequence[float]],
-    ) -> list[Chance]: ...
+    ) -> list[Chance]:
+        """list[:class:`Chance`]: Returns the payout distribution for a set of bets.
+
+        There is one row per possible total payout (in odds), sorted by payout, with
+        the chance of hitting it plus the cumulative and tail chances.
+
+        Parameters
+        ----------
+        bets: Sequence[Sequence[:class:`int`]]
+            The bets, as pirate indices per arena.
+        bet_odds: Sequence[:class:`int`]
+            The odds of each bet, in the same order as ``bets``.
+        probabilities: Sequence[Sequence[:class:`float`]]
+            Each pirate's win probability, per arena.
+
+        """
     @staticmethod
-    def expand_ib_object(
+    def build_payout_regions(
         bets: Sequence[Sequence[int]],
         bet_odds: Sequence[int],
-    ) -> dict[int, int]: ...
+    ) -> dict[int, int]:
+        """dict[:class:`int`, :class:`int`]: Splits all possible winning outcomes into
+        non-overlapping regions and returns the total payout (sum of bet odds) for each.
+
+        Each key is a bet-binary-style bitmask of the pirates the region accepts in each
+        arena. Every possible outcome falls in exactly one region.
+
+        Parameters
+        ----------
+        bets: Sequence[Sequence[:class:`int`]]
+            The bets, as pirate indices per arena.
+        bet_odds: Sequence[:class:`int`]
+            The odds of each bet, in the same order as ``bets``.
+
+        """
 
 class Modifier:
     EMPTY: int

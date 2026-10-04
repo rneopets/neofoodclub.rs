@@ -22,7 +22,7 @@ pub fn compute_bets_indices_to_hash(flat_indices: Vec<u8>) -> Result<String, JsE
         return Err(JsError::new("length must be a multiple of 5"));
     }
     let indices: Vec<[u8; 5]> = flat_indices.as_chunks::<5>().0.to_vec();
-    Ok(math::bets_hash_value(indices))
+    Ok(math::bet_indices_to_bets_hash(indices))
 }
 
 /// Replaces the internal `parseBetAmounts`. Decodes an amounts hash (`#a=...`

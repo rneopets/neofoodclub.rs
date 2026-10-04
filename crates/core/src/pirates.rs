@@ -1,6 +1,6 @@
 use crate::{
     food_adjustments::{NEGATIVE_FOOD, POSITIVE_FOOD},
-    math::pirate_binary,
+    math::pirate_bit,
     nfc::NeoFoodClub,
 };
 
@@ -77,7 +77,7 @@ pub struct Pirate {
 impl Pirate {
     /// The pirate's bet-binary representation in the associated round.
     pub fn binary(&self) -> u32 {
-        pirate_binary(self.index, self.arena_id)
+        pirate_bit(self.index, self.arena_id)
     }
 
     /// The pirates positive foods for a given NFC object.

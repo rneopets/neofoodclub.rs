@@ -76,16 +76,16 @@ def test_bet_amounts_to_amounts_hash(expected: str, bet_amounts: Sequence[int]) 
         ("ltqvqwgimhqtvrnywrwvijwnnxgslqmrylolnk", 15),
     ],
 )
-def test_bets_hash_to_bets_count(bets_hash: str, expected: int) -> None:
-    assert expected == Math.bets_hash_to_bets_count(bets_hash)
+def test_bets_hash_to_bet_count(bets_hash: str, expected: int) -> None:
+    assert expected == Math.bets_hash_to_bet_count(bets_hash)
 
 
 def test_amount_hash_to_bet_amounts_below_50() -> None:
     assert Math.amounts_hash_to_bet_amounts("AaX") == (49,)
 
 
-def test_expand_ib_object() -> None:
-    assert (Math.expand_ib_object([Math.binary_to_indices(0x80000)], [1])) == {
+def test_build_payout_regions() -> None:
+    assert (Math.build_payout_regions([Math.binary_to_indices(0x80000)], [1])) == {
         524287: 0,
         589823: 1,
     }

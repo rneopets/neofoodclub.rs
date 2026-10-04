@@ -4,7 +4,7 @@ use crate::arena::Arenas;
 use crate::bets::Bets;
 use crate::error::NfcError;
 use crate::math::{
-    make_round_dicts, pirates_binary, RoundDictData, BET_AMOUNT_MAX_SETTABLE, BET_AMOUNT_MIN,
+    build_round_tables, indices_to_binary, RoundTables, BET_AMOUNT_MAX_SETTABLE, BET_AMOUNT_MIN,
 };
 use crate::modifier::{Modifier, ModifierFlags};
 use crate::oddschange::OddsChange;
@@ -50,7 +50,7 @@ pub struct NeoFoodClub {
     custom_probabilities: Option<[[f64; 5]; 5]>,
     arenas: OnceCell<Arenas>,
     stds: OnceCell<[[f64; 5]; 5]>,
-    data: OnceCell<RoundDictData>,
+    data: OnceCell<RoundTables>,
     pub(crate) max_ter_indices: OnceCell<Vec<usize>>,
     pub(crate) net_expected_indices: OnceCell<Vec<f64>>,
     pub(crate) clamped_max_bets: OnceCell<Vec<u32>>,
@@ -137,11 +137,11 @@ impl NeoFoodClub {
         })
     }
 
-    /// Lazy loads the RoundDictData object.
+    /// Lazy loads the RoundTables object.
     #[inline]
-    pub fn round_dict_data(&self) -> &RoundDictData {
+    pub fn round_dict_data(&self) -> &RoundTables {
         self.data
-            .get_or_init(|| make_round_dicts(self.probabilities(), self.custom_odds()))
+            .get_or_init(|| build_round_tables(self.probabilities(), self.custom_odds()))
     }
 
     /// Clear our lazy-loaded caches.
@@ -275,7 +275,7 @@ impl NeoFoodClub {
     /// Returns the binary representation of the winning pirates.
     /// Zero means no pirates won yet.
     pub fn winners_binary(&self) -> u32 {
-        pirates_binary(self.winners())
+        indices_to_binary(self.winners())
     }
 
     /// Returns a vector of the winning pirates, if any.

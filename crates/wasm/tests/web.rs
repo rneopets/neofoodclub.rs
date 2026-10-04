@@ -94,8 +94,8 @@ fn compute_bets_hash_to_indices_rejects_malformed_hash() {
 }
 
 #[wasm_bindgen_test]
-fn compute_bets_indices_to_hash_rejects_bad_length() {
-    assert!(compute_bets_indices_to_hash(vec![1, 0, 0, 0]).is_err());
+fn compute_bet_indices_to_bets_hash_rejects_bad_length() {
+    assert!(compute_bet_indices_to_bets_hash(vec![1, 0, 0, 0]).is_err());
 }
 
 #[wasm_bindgen_test]
@@ -104,8 +104,8 @@ fn compute_arena_ratios_rejects_wrong_length() {
 }
 
 #[wasm_bindgen_test]
-fn compute_pirates_binary_rejects_wrong_length() {
-    assert!(compute_pirates_binary(vec![1, 2, 3]).is_err());
+fn compute_indices_to_binary_rejects_wrong_length() {
+    assert!(compute_indices_to_binary(vec![1, 2, 3]).is_err());
 }
 
 #[wasm_bindgen_test]

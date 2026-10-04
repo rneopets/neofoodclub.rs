@@ -16,8 +16,8 @@ pub fn compute_bets_hash_to_indices(bets_hash: &str) -> Result<Vec<u8>, JsError>
 
 /// Replaces the internal `makeBetsUrl`. Encodes a flattened n*5 array of
 /// pirate indices into a bets hash string.
-#[wasm_bindgen(js_name = computeBetsIndicesToHash)]
-pub fn compute_bets_indices_to_hash(flat_indices: Vec<u8>) -> Result<String, JsError> {
+#[wasm_bindgen(js_name = computeBetIndicesToBetsHash)]
+pub fn compute_bet_indices_to_bets_hash(flat_indices: Vec<u8>) -> Result<String, JsError> {
     if !flat_indices.len().is_multiple_of(5) {
         return Err(JsError::new("length must be a multiple of 5"));
     }
@@ -77,7 +77,7 @@ mod tests {
     #[test]
     fn bets_indices_to_hash_round_trips() {
         let flat = compute_bets_hash_to_indices("faa").unwrap();
-        let hash = compute_bets_indices_to_hash(flat.clone()).unwrap();
+        let hash = compute_bet_indices_to_bets_hash(flat.clone()).unwrap();
         let round_tripped = compute_bets_hash_to_indices(&hash).unwrap();
         assert_eq!(round_tripped, flat);
     }

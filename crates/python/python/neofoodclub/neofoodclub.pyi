@@ -54,7 +54,9 @@ class Chance:
 class Math:
     BIT_MASKS: tuple[int, ...]
     BET_AMOUNT_MIN: int
-    BET_AMOUNT_MAX: int
+    BET_AMOUNT_HASH_MAX: int
+    """The largest bet amount an amounts hash can represent. Bets of any amount are valid, but
+    amounts above this cannot be put in a hash."""
 
     @staticmethod
     def pirate_bit(index: int, arena: int) -> int:
@@ -152,6 +154,11 @@ class Math:
         ----------
         bet_amounts: Sequence[int]
             A sequence of bet amount integers.
+
+        Raises
+        ------
+        ValueError
+            An amount is above :attr:`BET_AMOUNT_HASH_MAX`, which a hash cannot represent.
 
         """
 
@@ -390,8 +397,8 @@ class Odds:
 
 class Bets:
     @property
-    def bet_amounts(self) -> tuple[int | None, ...] | None:
-        """Optional[Tuple[Optional[:class:`int`], ...]]: The amounts of the bets."""
+    def bet_amounts(self) -> list[int | None] | None:
+        """Optional[List[Optional[:class:`int`]]]: The amounts of the bets."""
 
     def remove_amounts(self) -> None:
         """Removes the bet amounts from the bets."""
@@ -441,7 +448,19 @@ class Bets:
 
     @property
     def amounts_hash(self) -> str | None:
-        """Optional[:class:`str`]: The hash of the bet amounts, if applicable."""
+        """Optional[:class:`str`]: The hash of the bet amounts, or ``None`` if there are no amounts.
+
+        Raises
+        ------
+        ValueError
+            An amount is above :attr:`Math.BET_AMOUNT_HASH_MAX`, which a hash cannot represent.
+            Check :attr:`amounts_hashable` first.
+        """
+
+    @property
+    def amounts_hashable(self) -> bool:
+        """:class:`bool`: Whether every bet amount fits in an amounts hash (is at most
+        :attr:`Math.BET_AMOUNT_HASH_MAX`). ``True`` when there are no amounts."""
 
     @property
     def is_bustproof(self) -> bool:
@@ -494,6 +513,9 @@ class Bets:
         all_data: bool = False,
     ) -> str:
         """Returns a URL for the bets.
+
+        If any bet amount is above :attr:`Math.BET_AMOUNT_HASH_MAX`, the amounts cannot be
+        hashed, so the URL is made without them.
 
         Parameters
         ----------
@@ -858,7 +880,9 @@ class NeoFoodClub:
         """Returns a URL to the round.
 
         If bets is provided, it will include the bets in the URL. If bet amounts
-        are provided, it will include the bet amounts in the URL.
+        are provided, it will include the bet amounts in the URL, unless any is above
+        :attr:`Math.BET_AMOUNT_HASH_MAX` (a hash cannot represent those), in which case
+        the URL is made without them.
 
         Parameters
         ----------

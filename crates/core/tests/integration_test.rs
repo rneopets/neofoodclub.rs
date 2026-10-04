@@ -1,4 +1,4 @@
-use neofoodclub::math::{self, BET_AMOUNT_MAX, BET_AMOUNT_MAX_SETTABLE, BET_AMOUNT_MIN};
+use neofoodclub::math::{self, BET_AMOUNT_HASH_MAX, BET_AMOUNT_MIN};
 use neofoodclub::modifier::{Modifier, ModifierFlags};
 use neofoodclub::nfc::{NeoFoodClub, ProbabilityModel};
 
@@ -123,7 +123,7 @@ mod tests {
         let nfc = make_test_nfc();
         let bets = nfc.make_bustproof_bets().unwrap();
 
-        let amounts_hash = bets.amounts_hash();
+        let amounts_hash = bets.amounts_hash().unwrap();
 
         let mut bet_amounts = math::amounts_hash_to_bet_amounts(&amounts_hash.unwrap()).unwrap();
 
@@ -158,7 +158,10 @@ mod tests {
 
         assert_eq!(parsed.round, nfc.round());
         assert_eq!(parsed.b, bets.bets_hash());
-        assert_eq!(bets.amounts_hash().as_deref(), Some(parsed.a.as_str()));
+        assert_eq!(
+            bets.amounts_hash().unwrap().as_deref(),
+            Some(parsed.a.as_str())
+        );
 
         let mut binaries = math::bets_hash_to_bet_binaries(&parsed.b).unwrap();
         binaries.sort_unstable();
@@ -241,7 +244,7 @@ mod tests {
 
         // The bet on pirate index 1 in every arena (binary 0x88888) is the winner.
         let mut bets = nfc.make_bets_from_binaries(vec![0x88888]);
-        bets.set_bet_amounts(&Some(BetAmounts::AllSame(BET_AMOUNT_MAX_SETTABLE)))
+        bets.set_bet_amounts(&Some(BetAmounts::AllSame(BET_AMOUNT_HASH_MAX)))
             .unwrap();
 
         // Sanity: this bet's integer odds are 13^5, far above the overflow threshold.
@@ -356,10 +359,10 @@ mod tests {
 
     #[test]
     fn test_bet_amounts_hash_encoding_and_decoding() {
-        // loop from 50 to 70304 in parallel
-        (BET_AMOUNT_MIN..BET_AMOUNT_MAX).for_each(|amount| {
+        // every amount the hash can represent round-trips
+        (BET_AMOUNT_MIN..=BET_AMOUNT_HASH_MAX).for_each(|amount| {
             let amounts = vec![Some(amount); 10];
-            let hash = math::bet_amounts_to_amounts_hash(&amounts);
+            let hash = math::bet_amounts_to_amounts_hash(&amounts).unwrap();
             assert_eq!(
                 math::amounts_hash_to_bet_amounts(&hash).unwrap(),
                 vec![Some(amount); 10]
@@ -371,7 +374,7 @@ mod tests {
     fn test_bet_amounts_hash_encoding_and_decoding_none() {
         // amount too low, returns None
         let amounts = vec![Some(BET_AMOUNT_MIN - 1); 10];
-        let hash = math::bet_amounts_to_amounts_hash(&amounts);
+        let hash = math::bet_amounts_to_amounts_hash(&amounts).unwrap();
         assert_eq!(
             math::amounts_hash_to_bet_amounts(&hash).unwrap(),
             vec![None; 10]
@@ -888,66 +891,138 @@ mod tests {
     }
 
     #[test]
-    fn test_set_bet_amount_clamps_to_max_settable() {
-        // BET_AMOUNT_MAX (70304) cannot be represented in an amounts hash — it
-        // wraps to the same code as None. Settable amounts therefore clamp to
-        // BET_AMOUNT_MAX_SETTABLE (70303), the largest value that round-trips.
-        assert_eq!(BET_AMOUNT_MAX_SETTABLE, BET_AMOUNT_MAX - 1);
-
+    fn test_set_bet_amount_is_not_capped_at_the_hash_maximum() {
+        // Amounts above BET_AMOUNT_HASH_MAX are valid bets; only the amounts hash can't
+        // represent them. The engine must keep the real amount.
         let mut nfc = make_test_nfc();
 
-        // Setting the unrepresentable max clamps down to the settable max.
-        nfc.set_bet_amount(Some(BET_AMOUNT_MAX));
-        assert_eq!(nfc.bet_amount, Some(BET_AMOUNT_MAX_SETTABLE));
+        nfc.set_bet_amount(Some(BET_AMOUNT_HASH_MAX + 1));
+        assert_eq!(nfc.bet_amount, Some(BET_AMOUNT_HASH_MAX + 1));
 
-        // The settable max is accepted unchanged.
-        nfc.set_bet_amount(Some(BET_AMOUNT_MAX_SETTABLE));
-        assert_eq!(nfc.bet_amount, Some(BET_AMOUNT_MAX_SETTABLE));
+        nfc.set_bet_amount(Some(500_000));
+        assert_eq!(nfc.bet_amount, Some(500_000));
 
-        // from_amount(70304) is out of the settable range and yields no amount.
-        assert_eq!(BetAmounts::from_amount(BET_AMOUNT_MAX), BetAmounts::None);
+        // the minimum still applies
+        nfc.set_bet_amount(Some(0));
+        assert_eq!(nfc.bet_amount, Some(BET_AMOUNT_MIN));
+
         assert_eq!(
-            BetAmounts::from_amount(BET_AMOUNT_MAX_SETTABLE),
-            BetAmounts::AllSame(BET_AMOUNT_MAX_SETTABLE)
+            BetAmounts::from_amount(BET_AMOUNT_HASH_MAX + 1),
+            BetAmounts::AllSame(BET_AMOUNT_HASH_MAX + 1)
+        );
+        assert_eq!(BetAmounts::from_amount(0), BetAmounts::None);
+    }
+
+    #[test]
+    fn test_amounts_above_hash_max_are_an_error_not_a_wraparound() {
+        // 70304 used to collide with "no amount" and 80000 used to silently encode as
+        // 80000 % 70304 = 9696. Both must be rejected now.
+        for amount in [BET_AMOUNT_HASH_MAX + 1, 80_000, 500_000, u32::MAX] {
+            let err = math::bet_amounts_to_amounts_hash(&[Some(50), Some(amount)])
+                .expect_err("amount above the hash maximum must not be hashable");
+            assert!(
+                err.to_string().contains(&amount.to_string()),
+                "error should name the amount: {err}"
+            );
+        }
+
+        // the largest representable amount still round-trips
+        let hash = math::bet_amounts_to_amounts_hash(&[Some(BET_AMOUNT_HASH_MAX)]).unwrap();
+        assert_eq!(
+            math::amounts_hash_to_bet_amounts(&hash).unwrap(),
+            vec![Some(BET_AMOUNT_HASH_MAX)]
         );
     }
 
     #[test]
-    fn test_fill_bet_amounts_never_produces_unrepresentable_max() {
-        // With the (clamped) max settable bet amount, low-odds bets previously
-        // filled to BET_AMOUNT_MAX (70304), a value the amounts hash cannot
-        // represent — it would silently decode back to None on a URL round-trip.
-        // Now they fill to BET_AMOUNT_MAX_SETTABLE (70303), which round-trips.
-        let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT_MAX), None, None)
+    fn test_bets_amounts_hashable() {
+        let nfc = make_test_nfc();
+        let mut bets = nfc.make_max_ter_bets();
+
+        // no amounts at all: hashable, and there is simply no hash
+        bets.bet_amounts = None;
+        assert!(bets.amounts_hashable());
+        assert_eq!(bets.amounts_hash().unwrap(), None);
+
+        bets.set_bet_amounts(&Some(BetAmounts::AllSame(BET_AMOUNT_HASH_MAX)))
+            .unwrap();
+        assert!(bets.amounts_hashable());
+        assert!(bets.amounts_hash().unwrap().is_some());
+
+        bets.set_bet_amounts(&Some(BetAmounts::AllSame(BET_AMOUNT_HASH_MAX + 1)))
+            .unwrap();
+        assert!(!bets.amounts_hashable());
+        assert!(bets.amounts_hash().is_err());
+    }
+
+    #[test]
+    fn test_make_url_omits_unhashable_amounts_but_keeps_the_bets() {
+        let nfc = make_test_nfc();
+        let mut bets = nfc.make_max_ter_bets();
+
+        bets.set_bet_amounts(&Some(BetAmounts::AllSame(8000)))
+            .unwrap();
+        let url = nfc.make_url(Some(&bets), false, false);
+        assert!(url.contains("&b="));
+        assert!(url.contains("&a="));
+
+        bets.set_bet_amounts(&Some(BetAmounts::AllSame(BET_AMOUNT_HASH_MAX + 1)))
+            .unwrap();
+        let url = nfc.make_url(Some(&bets), false, false);
+        assert!(url.contains(&format!("&b={}", bets.bets_hash())));
+        assert!(
+            !url.contains("&a="),
+            "unhashable amounts must be left out: {url}"
+        );
+    }
+
+    #[test]
+    fn test_fill_bet_amounts_uses_real_amounts_above_the_hash_max() {
+        // Before amounts were allowed past the hash maximum, a requested 500,000 was
+        // computed as 70,303. Now each bet fills to min(requested, maxbet).
+        let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(500_000), None, None)
             .expect("valid round");
+        assert_eq!(nfc.bet_amount, Some(500_000));
 
-        // The requested 70304 clamps to the settable max.
-        assert_eq!(nfc.bet_amount, Some(BET_AMOUNT_MAX_SETTABLE));
-
-        let mut bets = nfc.make_bustproof_bets().unwrap();
+        let mut bets = nfc.make_max_ter_bets();
         bets.fill_bet_amounts(&nfc);
 
+        let data = nfc.round_dict_data();
         let amounts = bets.bet_amounts.as_ref().unwrap();
-        for &amount in amounts.iter() {
-            let amount = amount.unwrap();
-            assert!(
-                amount <= BET_AMOUNT_MAX_SETTABLE,
-                "filled amount {amount} exceeds the settable max"
-            );
+        for (amount, &index) in amounts.iter().zip(bets.array_indices.iter()) {
+            assert_eq!(*amount, Some(500_000.min(data.maxbets[index])));
         }
-
-        // At least one low-odds (high-maxbet) bet fills to the full settable max.
         assert!(
-            amounts.contains(&Some(BET_AMOUNT_MAX_SETTABLE)),
-            "expected at least one bet to fill to the full settable max"
+            amounts.iter().flatten().any(|&a| a > BET_AMOUNT_HASH_MAX),
+            "expected at least one bet above the hash maximum"
         );
+    }
 
-        // And that value round-trips through an amounts hash (the original bug).
-        let hash = math::bet_amounts_to_amounts_hash(&[Some(BET_AMOUNT_MAX_SETTABLE)]);
-        assert_eq!(
-            math::amounts_hash_to_bet_amounts(&hash).unwrap(),
-            vec![Some(BET_AMOUNT_MAX_SETTABLE)]
-        );
+    #[test]
+    fn test_bustproof_amounts_with_a_huge_bet_amount_do_not_overflow() {
+        // amount * lowest_odds is computed in u64. Realistic amounts don't overflow u32 here
+        // (the lowest odds are small), so use u32::MAX, which overflows for any odds >= 2.
+        let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(u32::MAX), None, None)
+            .expect("valid round");
+        let bets = nfc.make_bustproof_bets().unwrap();
+
+        let odds = bets.odds_values(&nfc);
+        let lowest = *odds.iter().min().unwrap() as u64;
+        let expected: Vec<Option<u32>> = odds
+            .iter()
+            .map(|&odd| Some((u32::MAX as u64 * lowest / odd as u64) as u32))
+            .collect();
+        assert_eq!(bets.bet_amounts, Some(expected));
+    }
+
+    #[test]
+    fn test_is_guaranteed_win_with_huge_amounts_does_not_overflow() {
+        // odds * amount is computed in u64; u32::MAX * odds would overflow a u32.
+        let nfc = make_test_nfc();
+        let mut bets = nfc.make_bustproof_bets().unwrap();
+        bets.set_bet_amounts(&Some(BetAmounts::AllSame(u32::MAX)))
+            .unwrap();
+        assert!(bets.is_guaranteed_win(&nfc));
     }
 
     #[test]

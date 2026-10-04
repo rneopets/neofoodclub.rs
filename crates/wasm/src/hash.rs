@@ -43,13 +43,23 @@ pub fn compute_amounts_hash_to_bet_amounts(amounts_hash: &str) -> Result<Vec<i64
 /// Replaces the internal `makeBetAmountsUrl`. Encodes one amount per bet
 /// into an amounts hash string; any value `< 1` (including the `-1` "unset"
 /// sentinel from `computeAmountsHashToBetAmounts`) encodes as `None`.
+///
+/// Throws if any amount is above `BET_AMOUNT_HASH_MAX` (70303), which the hash
+/// cannot represent.
 #[wasm_bindgen(js_name = computeBetAmountsToAmountsHash)]
-pub fn compute_bet_amounts_to_amounts_hash(amounts: Vec<i64>) -> String {
-    let opts: Vec<Option<u32>> = amounts
+pub fn compute_bet_amounts_to_amounts_hash(amounts: Vec<i64>) -> Result<String, JsError> {
+    let opts = amounts
         .into_iter()
-        .map(|v| if v >= 1 { Some(v as u32) } else { None })
-        .collect();
-    math::bet_amounts_to_amounts_hash(&opts)
+        .map(|v| match v {
+            ..=0 => Ok(None),
+            1..=i64::MAX if v <= i64::from(math::BET_AMOUNT_HASH_MAX) => Ok(Some(v as u32)),
+            _ => Err(JsError::new(&format!(
+                "{v} is above {}, the largest amount an amounts hash can represent.",
+                math::BET_AMOUNT_HASH_MAX
+            ))),
+        })
+        .collect::<Result<Vec<Option<u32>>, JsError>>()?;
+    math::bet_amounts_to_amounts_hash(&opts).map_err(|e| JsError::new(&e.to_string()))
 }
 
 // Note: only the Ok path of these Result<_, JsError>-returning functions is
@@ -100,7 +110,7 @@ mod tests {
     #[test]
     fn bet_amounts_to_amounts_hash_round_trips() {
         let amounts = vec![50, 100, 150, 200, 250];
-        let hash = compute_bet_amounts_to_amounts_hash(amounts.clone());
+        let hash = compute_bet_amounts_to_amounts_hash(amounts.clone()).unwrap();
         let round_tripped = compute_amounts_hash_to_bet_amounts(&hash).unwrap();
         assert_eq!(round_tripped, amounts);
     }
@@ -108,8 +118,8 @@ mod tests {
     #[test]
     fn bet_amounts_to_amounts_hash_encodes_values_below_one_as_unset() {
         // 0 and the -1 sentinel should both encode as "unset".
-        let hash_zero = compute_bet_amounts_to_amounts_hash(vec![0]);
-        let hash_sentinel = compute_bet_amounts_to_amounts_hash(vec![-1]);
+        let hash_zero = compute_bet_amounts_to_amounts_hash(vec![0]).unwrap();
+        let hash_sentinel = compute_bet_amounts_to_amounts_hash(vec![-1]).unwrap();
         assert_eq!(hash_zero, hash_sentinel);
         assert_eq!(
             compute_amounts_hash_to_bet_amounts(&hash_zero).unwrap(),

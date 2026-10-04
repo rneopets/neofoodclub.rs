@@ -7,18 +7,21 @@ use crate::chance::Chance;
 use crate::error::NfcError;
 
 pub const BET_AMOUNT_MIN: u32 = 1;
-pub const BET_AMOUNT_MAX: u32 = 70304;
 
-/// The largest bet amount that can round-trip through a hash.
+/// The largest bet amount that an amounts hash can represent.
 ///
-/// `bet_amounts_to_amounts_hash` encodes each amount in a base-52 domain of exactly
-/// `BET_AMOUNT_MAX` (70304) codes: one for "no amount" (`None`) plus amounts
-/// `1..=70303`. There is no code left for the value `BET_AMOUNT_MAX` itself — it
-/// wraps around to collide with `None`, so hashing an amount of 70304 silently
-/// loses it. Settable amounts therefore clamp to this value instead of
-/// `BET_AMOUNT_MAX`. `BET_AMOUNT_MAX` is kept (unchanged) as the hash base and
-/// public constant.
-pub const BET_AMOUNT_MAX_SETTABLE: u32 = 70_303;
+/// Bets of any amount are valid (a single bet can go up to `1_000_000 / odds`, which is
+/// as much as 500,000), and every calculation in this crate uses the real amount. Only the
+/// amounts hash is limited: `bet_amounts_to_amounts_hash` encodes each amount in three
+/// base-52 characters, and a code only exists for "no amount" and for amounts
+/// `1..=BET_AMOUNT_HASH_MAX`. Larger amounts have no code, so hashing one returns an
+/// error instead of silently producing a different amount.
+pub const BET_AMOUNT_HASH_MAX: u32 = 70_303;
+
+/// Offset of the amounts-hash codec: encoded value = amount + `AMOUNTS_HASH_BASE`, where
+/// "no amount" encodes as 0 + `AMOUNTS_HASH_BASE`. Three base-52 characters hold 52^3 =
+/// 140,608 codes, so `BET_AMOUNT_HASH_MAX + AMOUNTS_HASH_BASE` is the last valid code.
+const AMOUNTS_HASH_BASE: u32 = BET_AMOUNT_HASH_MAX + 1;
 
 // WARNING: the literal integers in this file switches between hex and binary willy-nilly, mostly for readability.
 
@@ -235,24 +238,40 @@ pub fn bets_hash_to_bet_count(bets_hash: &str) -> Result<usize, NfcError> {
 }
 
 /// Returns the hash of the given bet amounts.
+///
+/// Returns an error if any amount is above [`BET_AMOUNT_HASH_MAX`], since the hash has no
+/// way to represent it.
 /// ```
-/// let hash = neofoodclub::math::bet_amounts_to_amounts_hash(&vec![Some(50), Some(100), Some(150), Some(200), Some(250)]);
+/// let hash = neofoodclub::math::bet_amounts_to_amounts_hash(&vec![Some(50), Some(100), Some(150), Some(200), Some(250)]).unwrap();
 /// assert_eq!(hash, "AaYAbWAcUAdSAeQ");
 ///
-/// let hash = neofoodclub::math::bet_amounts_to_amounts_hash(&vec![None, Some(50), Some(100), Some(150), Some(200), Some(250)]);
+/// let hash = neofoodclub::math::bet_amounts_to_amounts_hash(&vec![None, Some(50), Some(100), Some(150), Some(200), Some(250)]).unwrap();
 /// assert_eq!(hash, "AaaAaYAbWAcUAdSAeQ");
 ///
-/// let hash = neofoodclub::math::bet_amounts_to_amounts_hash(&vec![None, None, None, None, None, None, None, None, None, None]);
+/// let hash = neofoodclub::math::bet_amounts_to_amounts_hash(&vec![None, None, None, None, None, None, None, None, None, None]).unwrap();
 /// assert_eq!(hash, "AaaAaaAaaAaaAaaAaaAaaAaaAaaAaa");
+///
+/// let too_big = neofoodclub::math::bet_amounts_to_amounts_hash(&[Some(70304)]);
+/// assert!(too_big.is_err());
 /// ```
 #[inline]
-pub fn bet_amounts_to_amounts_hash(bet_amounts: &[Option<u32>]) -> String {
+pub fn bet_amounts_to_amounts_hash(bet_amounts: &[Option<u32>]) -> Result<String, NfcError> {
+    if let Some(&amount) = bet_amounts
+        .iter()
+        .flatten()
+        .find(|&&a| a > BET_AMOUNT_HASH_MAX)
+    {
+        return Err(NfcError::BetAmount(format!(
+            "{amount} is above {BET_AMOUNT_HASH_MAX}, the largest amount an amounts hash can represent."
+        )));
+    }
+
     // Build as ASCII bytes directly; avoids `Vec<char>` + UTF-8 re-encoding on collect.
     let mut result = vec![0_u8; bet_amounts.len() * 3];
     let mut index = result.len();
 
     for &value in bet_amounts.iter().rev() {
-        let mut state = value.unwrap_or(0) % BET_AMOUNT_MAX + BET_AMOUNT_MAX;
+        let mut state = value.unwrap_or(0) + AMOUNTS_HASH_BASE;
 
         for _ in 0..3 {
             index -= 1;
@@ -269,7 +288,7 @@ pub fn bet_amounts_to_amounts_hash(bet_amounts: &[Option<u32>]) -> String {
 
     // SAFETY: every byte written is a letter_index offset from b'a' or b'A',
     // both of which are ASCII; the result vec contains only valid UTF-8.
-    unsafe { String::from_utf8_unchecked(result) }
+    Ok(unsafe { String::from_utf8_unchecked(result) })
 }
 
 /// Returns the bet amounts from a given bet amounts hash.
@@ -296,7 +315,7 @@ pub fn amounts_hash_to_bet_amounts(amounts_hash: &str) -> Result<Vec<Option<u32>
 
     #[inline]
     fn push_decoded(out: &mut Vec<Option<u32>>, value: u32) {
-        let decoded = value.saturating_sub(BET_AMOUNT_MAX);
+        let decoded = value.saturating_sub(AMOUNTS_HASH_BASE);
         out.push(if decoded >= BET_AMOUNT_MIN {
             Some(decoded)
         } else {

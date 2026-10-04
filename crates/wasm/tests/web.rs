@@ -29,11 +29,9 @@ struct PayoutTablesOutTest {
 #[derive(Deserialize)]
 struct BetsOutTest {
     indices: Vec<[u8; 5]>,
-    #[allow(dead_code)]
     amounts: Option<Vec<Option<u32>>>,
     #[serde(rename = "betsHash")]
     bets_hash: String,
-    #[allow(dead_code)]
     #[serde(rename = "amountsHash")]
     amounts_hash: Option<String>,
 }
@@ -142,4 +140,32 @@ fn nfc_engine_make_gambit_bets_rejects_wrong_pirate_count() {
     // Selects only one pirate total instead of exactly 5 (one per arena).
     let single_pick = 1u32;
     assert!(engine.make_gambit_bets(single_pick).is_err());
+}
+
+#[wasm_bindgen_test]
+fn compute_bet_amounts_to_amounts_hash_rejects_amounts_above_the_hash_max() {
+    // 70303 is the largest representable amount; one more has no code, and 80000 used to
+    // silently wrap to 9696.
+    assert!(compute_bet_amounts_to_amounts_hash(vec![70_303]).is_ok());
+    assert!(compute_bet_amounts_to_amounts_hash(vec![70_304]).is_err());
+    assert!(compute_bet_amounts_to_amounts_hash(vec![50, 80_000]).is_err());
+    assert!(compute_bet_amounts_to_amounts_hash(vec![i64::MAX]).is_err());
+}
+
+#[wasm_bindgen_test]
+fn nfc_engine_keeps_amounts_above_the_hash_max_but_has_no_amounts_hash() {
+    let mut engine = NfcEngine::new(ROUND_DATA_JSON, Some(8000), false).unwrap();
+
+    let parsed: BetsOutTest =
+        serde_wasm_bindgen::from_value(engine.make_max_ter_bets().unwrap()).unwrap();
+    assert!(parsed.amounts_hash.is_some());
+
+    // each bet fills to min(requested, its own max bet), so a huge request gives amounts
+    // above 70303 for low-odds bets, with no hash for them
+    engine.set_bet_amount(Some(500_000));
+    let parsed: BetsOutTest =
+        serde_wasm_bindgen::from_value(engine.make_max_ter_bets().unwrap()).unwrap();
+    let amounts = parsed.amounts.expect("amounts are filled");
+    assert!(amounts.iter().flatten().any(|&a| a > 70_303));
+    assert!(parsed.amounts_hash.is_none());
 }

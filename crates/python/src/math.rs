@@ -14,7 +14,7 @@ impl Math {
     pub const BET_AMOUNT_MIN: u32 = neofoodclub::math::BET_AMOUNT_MIN;
 
     #[classattr]
-    pub const BET_AMOUNT_MAX: u32 = neofoodclub::math::BET_AMOUNT_MAX;
+    pub const BET_AMOUNT_HASH_MAX: u32 = neofoodclub::math::BET_AMOUNT_HASH_MAX;
 
     #[staticmethod]
     fn pirate_bit(index: u8, arena: u8) -> u32 {
@@ -39,8 +39,9 @@ impl Math {
     }
 
     #[staticmethod]
-    fn bet_amounts_to_amounts_hash(bet_amounts: Vec<Option<u32>>) -> String {
+    fn bet_amounts_to_amounts_hash(bet_amounts: Vec<Option<u32>>) -> PyResult<String> {
         neofoodclub::math::bet_amounts_to_amounts_hash(&bet_amounts)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
     }
 
     #[staticmethod]

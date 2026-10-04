@@ -168,8 +168,8 @@ mod payout_table_tests {
 
     #[test]
     fn test_fill_bet_amounts_all_bets_capped_by_maxbet() {
-        // BET_AMOUNT_MAX = 70_304. All amounts must be <= maxbet and the resulting
-        // payout must not exceed 1_000_000.
+        // All amounts must be <= maxbet and the resulting payout must not exceed
+        // 1_000_000.
         let nfc = make_nfc(BET_AMOUNT);
         let mut bets = nfc.make_bustproof_bets().unwrap();
         bets.fill_bet_amounts(&nfc);
@@ -190,13 +190,12 @@ mod payout_table_tests {
 
     #[test]
     fn test_fill_bet_amounts_high_odds_gets_capped_to_maxbet() {
-        // BET_AMOUNT_MAX_SETTABLE = 70_303 (the largest amount that round-trips
-        // through a hash; see math.rs). Bustproof bets with odds=20 have maxbet
-        // = 50_000, which is less than 70_303, so fill_bet_amounts caps the amount
-        // to 50_000. Bets with maxbet >= 70_303 fill at the full settable amount.
-        use neofoodclub::math::BET_AMOUNT_MAX_SETTABLE;
+        // Bustproof bets with odds=20 have maxbet = 50_000, which is less than 70_303,
+        // so fill_bet_amounts caps the amount to 50_000. Bets with maxbet >= 70_303
+        // fill at the full requested amount.
+        const REQUESTED: u32 = 70_303;
 
-        let nfc = make_nfc(BET_AMOUNT_MAX_SETTABLE);
+        let nfc = make_nfc(REQUESTED);
         let mut bets = nfc.make_bustproof_bets().unwrap();
         bets.fill_bet_amounts(&nfc);
 
@@ -209,10 +208,10 @@ mod payout_table_tests {
         for (amount_opt, &idx) in amounts.iter().zip(bets.array_indices.iter()) {
             let amount = amount_opt.unwrap();
             let maxbet = data.maxbets[idx];
-            if maxbet >= BET_AMOUNT_MAX_SETTABLE {
+            if maxbet >= REQUESTED {
                 assert_eq!(
-                    amount, BET_AMOUNT_MAX_SETTABLE,
-                    "bet with large maxbet should use the full settable amount"
+                    amount, REQUESTED,
+                    "bet with large maxbet should use the full requested amount"
                 );
                 found_uncapped = true;
             } else {
@@ -226,11 +225,11 @@ mod payout_table_tests {
 
         assert!(
             found_uncapped,
-            "expected at least one bet at the full settable amount"
+            "expected at least one bet at the full requested amount"
         );
         assert!(
             found_capped,
-            "expected at least one bet capped below the settable amount"
+            "expected at least one bet capped below the requested amount"
         );
     }
 

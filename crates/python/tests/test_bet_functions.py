@@ -351,7 +351,7 @@ def test_indices_to_bet_hash(
     bet_hash: str,
     bet_indices: Sequence[Sequence[int]],
 ) -> None:
-    assert Math.bets_hash_value(bet_indices) == bet_hash
+    assert Math.bet_indices_to_bets_hash(bet_indices) == bet_hash
 
 
 def test_bet_with_trailing_none_in_amounts(

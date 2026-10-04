@@ -26,39 +26,48 @@ pub const BET_AMOUNT_MAX_SETTABLE: u32 = 70_303;
 // BIT_MASKS[i] will accept pirates from arena i and only them. BIT_MASKS[4] == 0b1111, BIT_MASKS[3] == 0b11110000, etc...
 pub const BIT_MASKS: [u32; 5] = [0xF0000, 0xF000, 0xF00, 0xF0, 0xF];
 
+// Used by `region_probability` to look up each pirate's odds one slot at a time.
 // represents each arena with the same pirate index filled.
-// PIR_IB[i] will accept pirates of index i (from 0 to 3) PIR_IB[0] = 0b10001000100010001000, PIR_IB[1] = 0b01000100010001000100, PIR_IB[2] = 0b00100010001000100010, PIR_IB[3] = 0b00010001000100010001
+// PIRATE_SLOT_MASKS[i] will accept pirates of index i (from 0 to 3) PIRATE_SLOT_MASKS[0] = 0b10001000100010001000, PIRATE_SLOT_MASKS[1] = 0b01000100010001000100, PIRATE_SLOT_MASKS[2] = 0b00100010001000100010, PIRATE_SLOT_MASKS[3] = 0b00010001000100010001
 // 0x88888 = (1, 1, 1, 1, 1), which is the first pirate in each arena, and so on.
-const PIR_IB: [u32; 4] = [0x88888, 0x44444, 0x22222, 0x11111];
+const PIRATE_SLOT_MASKS: [u32; 4] = [0x88888, 0x44444, 0x22222, 0x11111];
 
-// 0xFFFFF = 0b11111111111111111111 (20 '1's), will accept all pirates
-const CONVERT_PIR_IB: [u32; 5] = [0xFFFFF, 0x88888, 0x44444, 0x22222, 0x11111];
+// Turns one bet index (0 to 4, as stored in a bet's `[u8; 5]`) into the bits it accepts in an
+// arena. Index 0 means "no pirate picked in this arena", which for a bet means any pirate is
+// accepted, so it maps to all 20 bits (0xFFFFF = 0b11111111111111111111). Indexes 1 to 4 map to
+// that pirate's slot across every arena; callers mask the result down to one arena with BIT_MASKS.
+// Used by `build_payout_regions` to turn each bet into a region.
+const ACCEPT_MASK_BY_INDEX: [u32; 5] = [0xFFFFF, 0x88888, 0x44444, 0x22222, 0x11111];
 
+/// Returns the single bit for one pirate: the pirate at `index` (1 to 4) in `arena` (0 to 4).
+/// An `index` of 0 means no pirate is picked, and returns 0.
 /// ```
-/// let bin = neofoodclub::math::pirate_binary(3, 2);
+/// let bin = neofoodclub::math::pirate_bit(3, 2);
 /// assert_eq!(bin, 0x200);
 /// ```
 #[inline]
-pub fn pirate_binary(index: u8, arena: u8) -> u32 {
+pub fn pirate_bit(index: u8, arena: u8) -> u32 {
     // `index` is a 1-based pirate slot (0 = "no pirate", 1..=4 = the four pirates).
     // An out-of-range index would silently land in a neighboring arena, so fail fast.
-    debug_assert!(index <= 4, "pirate_binary index out of range: {index}");
+    debug_assert!(index <= 4, "pirate_bit index out of range: {index}");
     let mask = (index != 0) as u32 * u32::MAX;
     let shift = (index.wrapping_sub(1) as u32 + arena as u32 * 4) & 31;
     (0x80000u32 >> shift) & mask
 }
 
+/// Combines one pirate index per arena into a single bet binary (inverse of
+/// [`binary_to_indices`]). Each index is 0 (no pick) or 1 to 4.
 /// ```
-/// let bin = neofoodclub::math::pirates_binary([0, 1, 2, 3, 4]);
+/// let bin = neofoodclub::math::indices_to_binary([0, 1, 2, 3, 4]);
 /// assert_eq!(bin, 0x08421);
 /// ```
 #[inline]
-pub fn pirates_binary(bets_indices: [u8; 5]) -> u32 {
-    pirate_binary(bets_indices[0], 0)
-        | pirate_binary(bets_indices[1], 1)
-        | pirate_binary(bets_indices[2], 2)
-        | pirate_binary(bets_indices[3], 3)
-        | pirate_binary(bets_indices[4], 4)
+pub fn indices_to_binary(bets_indices: [u8; 5]) -> u32 {
+    pirate_bit(bets_indices[0], 0)
+        | pirate_bit(bets_indices[1], 1)
+        | pirate_bit(bets_indices[2], 2)
+        | pirate_bit(bets_indices[3], 3)
+        | pirate_bit(bets_indices[4], 4)
 }
 
 /// ```
@@ -69,7 +78,7 @@ pub fn pirates_binary(bets_indices: [u8; 5]) -> u32 {
 pub fn random_full_pirates_binary() -> u32 {
     let mut rng = rand::rng();
 
-    pirates_binary([
+    indices_to_binary([
         rng.random_range(1..=4),
         rng.random_range(1..=4),
         rng.random_range(1..=4),
@@ -97,16 +106,16 @@ pub fn binary_to_indices(binary: u32) -> [u8; 5] {
     ]
 }
 
-/// Returns the index of `binary` in the [`RoundDictData`] vecs.
+/// Returns the index of `binary` in the [`RoundTables`] vecs.
 ///
 /// The vecs are built by iterating arenas in a fixed nested order (0..5 each),
 /// so the position is determined by base-5 arithmetic on the decoded pirate indices.
 /// `binary` must be a valid non-zero bet binary.
 #[inline]
-pub fn binary_to_index(binary: u32) -> usize {
+pub fn binary_to_table_index(binary: u32) -> usize {
     // A zero binary decodes to all-zero pirate indices, and the trailing `- 1`
     // below would underflow (usize). Valid bet binaries are always non-zero.
-    debug_assert_ne!(binary, 0, "binary_to_index called with a zero binary");
+    debug_assert_ne!(binary, 0, "binary_to_table_index called with a zero binary");
     let [a, b, c, d, e] = binary_to_indices(binary);
     a as usize * 625 + b as usize * 125 + c as usize * 25 + d as usize * 5 + e as usize - 1
 }
@@ -207,20 +216,20 @@ pub fn bets_hash_to_bet_indices(bets_hash: &str) -> Result<Vec<[u8; 5]>, NfcErro
 
 /// Returns the amount of bets from a given bet hash.
 /// ```
-/// let count = neofoodclub::math::bets_hash_to_bets_count("faa").unwrap();
+/// let count = neofoodclub::math::bets_hash_to_bet_count("faa").unwrap();
 /// assert_eq!(count, 1);
 ///
-/// let count = neofoodclub::math::bets_hash_to_bets_count("faafaafaafaafaafaa").unwrap();
+/// let count = neofoodclub::math::bets_hash_to_bet_count("faafaafaafaafaafaa").unwrap();
 /// assert_eq!(count, 6);
 ///
-/// let count = neofoodclub::math::bets_hash_to_bets_count("jmbcoemycobmbhofmdcoamyck").unwrap();
+/// let count = neofoodclub::math::bets_hash_to_bet_count("jmbcoemycobmbhofmdcoamyck").unwrap();
 /// assert_eq!(count, 10);
 ///
-/// let count = neofoodclub::math::bets_hash_to_bets_count("dgpqsxgtqsigqqsngrqsegpvsdgfqqsgsqsdgk").unwrap();
+/// let count = neofoodclub::math::bets_hash_to_bet_count("dgpqsxgtqsigqqsngrqsegpvsdgfqqsgsqsdgk").unwrap();
 /// assert_eq!(count, 15);
 /// ```
 #[inline]
-pub fn bets_hash_to_bets_count(bets_hash: &str) -> Result<usize, NfcError> {
+pub fn bets_hash_to_bet_count(bets_hash: &str) -> Result<usize, NfcError> {
     bets_hash_check(bets_hash)?;
     Ok(nonzero_chunks(&decode_hash_raw(bets_hash)).count())
 }
@@ -333,17 +342,17 @@ pub fn bets_hash_to_bet_binaries(bets_hash: &str) -> Result<Vec<u32>, NfcError> 
     bets_hash_check(bets_hash)?;
     Ok(bets_hash_to_bet_indices(bets_hash)?
         .iter()
-        .map(|&indices| pirates_binary(indices))
+        .map(|&indices| indices_to_binary(indices))
         .collect())
 }
 
 /// Returns the hash value from a given bet indices.
 /// ```
-/// let hash = neofoodclub::math::bets_hash_value(vec![[1, 0, 0, 0, 0]]);
+/// let hash = neofoodclub::math::bet_indices_to_bets_hash(vec![[1, 0, 0, 0, 0]]);
 /// assert_eq!(hash, "faa");
 /// ```
 #[inline]
-pub fn bets_hash_value(bets_indices: Vec<[u8; 5]>) -> String {
+pub fn bet_indices_to_bets_hash(bets_indices: Vec<[u8; 5]>) -> String {
     let len = bets_indices.len();
 
     bets_indices
@@ -357,22 +366,24 @@ pub fn bets_hash_value(bets_indices: Vec<[u8; 5]>) -> String {
 
 /// Returns the bet binaries from bet indices.
 /// ```
-/// let bins = neofoodclub::math::bets_indices_to_bet_binaries(vec![[1, 0, 0, 0, 0]]);
+/// let bins = neofoodclub::math::bet_indices_to_bet_binaries(vec![[1, 0, 0, 0, 0]]);
 /// assert_eq!(bins, vec![0x80000]);
 ///
-/// let bins = neofoodclub::math::bets_indices_to_bet_binaries(vec![[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1], [1, 0, 0, 0, 0]]);
+/// let bins = neofoodclub::math::bet_indices_to_bet_binaries(vec![[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1], [1, 0, 0, 0, 0]]);
 /// assert_eq!(bins, vec![0x80000, 0x8000, 0x800, 0x80, 0x8, 0x80000]);
 /// ```
 #[inline]
-pub fn bets_indices_to_bet_binaries(bets_indices: Vec<[u8; 5]>) -> Vec<u32> {
+pub fn bet_indices_to_bet_binaries(bets_indices: Vec<[u8; 5]>) -> Vec<u32> {
     bets_indices
         .iter()
-        .map(|&indices| pirates_binary(indices))
+        .map(|&indices| indices_to_binary(indices))
         .collect()
 }
 
+/// True if every arena has at least one pirate set. A region where this is false cannot
+/// contain any winning outcome, so it is dropped instead of tracked.
 #[inline]
-fn ib_doable(binary: u32) -> bool {
+fn is_nonempty(binary: u32) -> bool {
     (binary & 0xF0000 != 0)
         && (binary & 0xF000 != 0)
         && (binary & 0xF00 != 0)
@@ -380,14 +391,16 @@ fn ib_doable(binary: u32) -> bool {
         && (binary & 0xF != 0)
 }
 
+/// Probability that the winning outcome falls inside the region `binary`. For each arena it
+/// sums the win probabilities of the pirates the region accepts, then multiplies the arenas
+/// together (arenas are independent). `probabilities[arena][0]` is unused here.
 #[inline]
-fn ib_prob(binary: u32, probabilities: &[[f64; 5]; 5]) -> f64 {
-    // computes the probability that the winning combination is accepted by ib
+fn region_probability(binary: u32, probabilities: &[[f64; 5]; 5]) -> f64 {
     BIT_MASKS
         .iter()
         .enumerate()
         .fold(1.0, |total_prob, (x, bit_mask)| {
-            let ar_prob: f64 = PIR_IB
+            let ar_prob: f64 = PIRATE_SLOT_MASKS
                 .iter()
                 .enumerate()
                 .map(|(y, &pir_ib)| {
@@ -402,58 +415,68 @@ fn ib_prob(binary: u32, probabilities: &[[f64; 5]; 5]) -> f64 {
         })
 }
 
+/// Splits the space of winning outcomes into disjoint regions and returns the total payout
+/// (sum of bet odds) for each one, keyed by the region's bitmask.
+///
+/// A region is a 20-bit mask like a bet: one nibble per arena, where a set bit means that
+/// pirate is accepted. Regions never overlap, so every possible outcome lands in exactly one
+/// of them. Starting from a single region covering everything, each bet carves out the part
+/// of every region it overlaps. The overlap gets the bet's odds added, and whatever is left
+/// over is split into new disjoint regions that keep the old payout.
+///
 /// Returns an `FxHashMap` rather than a std `HashMap` since this sits on the odds/chance
-/// hot path (`build_chance_objects`, called by `Odds::new` for every bet set). `pyo3`'s
+/// hot path (`build_chances`, called by `Odds::new` for every bet set). `pyo3`'s
 /// `HashMap<K, V, H>` conversions are generic over the hasher, so downstream consumers
 /// (including the Python binding) can accept this directly without a SipHash re-hash.
-pub fn expand_ib_object(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32> {
-    // makes a dict of permutations of the pirates + odds
-    // this is why the bet table could be very long
-
-    let mut bets_to_ib: HashMap<u32, u32> =
+pub fn build_payout_regions(bets: &[[u8; 5]], bet_odds: &[u32]) -> HashMap<u32, u32> {
+    // identical bets share a mask, so merge them and sum their odds
+    let mut odds_by_mask: HashMap<u32, u32> =
         HashMap::with_capacity_and_hasher(bets.len(), Default::default());
-    for (key, bet_value) in bets.iter().enumerate() {
-        let ib = bet_value
-            .iter()
-            .zip(BIT_MASKS.iter())
-            .fold(0, |acc, (&v, &m)| acc | CONVERT_PIR_IB[v as usize] & m);
-        *bets_to_ib.entry(ib).or_insert(0) += bet_odds[key];
+    for (bet, &odds) in bets.iter().zip(bet_odds) {
+        let mask = bet.iter().zip(BIT_MASKS).fold(0, |acc, (&pirate, arena)| {
+            acc | (ACCEPT_MASK_BY_INDEX[pirate as usize] & arena)
+        });
+        *odds_by_mask.entry(mask).or_insert(0) += odds;
+    }
+    let mut bet_masks: Vec<(u32, u32)> = odds_by_mask.into_iter().collect();
+    bet_masks.sort_unstable();
+
+    // disjoint (region, payout) pairs; the first region accepts every pirate in every arena
+    let mut regions: Vec<(u32, u32)> = vec![(0xFFFFF, 0)];
+    let mut leftovers: Vec<(u32, u32)> = Vec::new();
+    for (bet, odds) in bet_masks {
+        leftovers.clear();
+        for (region, payout) in regions.iter_mut() {
+            let overlap = bet & *region;
+            if !is_nonempty(overlap) {
+                continue;
+            }
+            // Peel off what is outside the bet one arena at a time. After handling an arena,
+            // `remaining` is narrowed to the bet's pirates there, so pieces split off in later
+            // arenas can't overlap the ones already emitted. Once every arena is narrowed,
+            // `remaining` equals `overlap`.
+            let mut remaining = *region;
+            for arena in BIT_MASKS {
+                let outside = remaining & !(overlap & arena);
+                if is_nonempty(outside) {
+                    leftovers.push((outside, *payout));
+                    remaining = (remaining & !arena) | (overlap & arena);
+                }
+            }
+            *region = overlap;
+            *payout += odds;
+        }
+        regions.extend_from_slice(&leftovers);
     }
 
-    // filters down the doable bets from the permutations above
-    let mut res: HashMap<u32, u32> = HashMap::default();
-    res.insert(0xFFFFF, 0);
-    let mut bets_to_ib: Vec<_> = bets_to_ib.into_iter().collect();
-    bets_to_ib.sort_unstable();
-    let mut drained_elements: Vec<u32> = Vec::new();
-    for (ib_bet, winnings) in bets_to_ib.into_iter() {
-        drained_elements.clear();
-        drained_elements.extend(
-            res.keys()
-                .copied()
-                .filter(|ib_key| ib_doable(ib_bet & ib_key)),
-        );
-        for mut ib_key in drained_elements.iter().copied() {
-            let com = ib_bet & ib_key;
-            let val_key = res
-                .remove(&ib_key)
-                .expect("Failed to retrieve value for ib_key");
-            res.insert(com, winnings + val_key);
-            for ar in BIT_MASKS {
-                let tst = ib_key ^ (com & ar);
-                if !ib_doable(tst) {
-                    continue;
-                }
-                res.insert(tst, val_key);
-                ib_key = (ib_key & !ar) | (com & ar);
-            }
-        }
-    }
-    res
+    regions.into_iter().collect()
 }
 
+/// Per-bet lookup tables for a round, one entry for each of the 3124 possible bets (every
+/// combination of pirates, 0 to 4 per arena, except all zeros). All vecs share the same index,
+/// which is what [`binary_to_table_index`] computes from a bet binary.
 #[derive(Debug, Clone)]
-pub struct RoundDictData {
+pub struct RoundTables {
     pub bins: Vec<u32>,
     pub probs: Vec<f64>,
     pub odds: Vec<u32>,
@@ -461,7 +484,8 @@ pub struct RoundDictData {
     pub maxbets: Vec<u32>,
 }
 
-pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictData {
+/// Builds [`RoundTables`] from each arena's win probabilities (`stds`) and pirate odds.
+pub fn build_round_tables(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundTables {
     let mut bins: Vec<u32> = Vec::with_capacity(3124);
     let mut probs: Vec<f64> = Vec::with_capacity(3124);
     let mut odds_vec: Vec<u32> = Vec::with_capacity(3124);
@@ -473,26 +497,26 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
     for a in 0..5usize {
         let prob_a = stds[0][a];
         let odds_a = odds[0][a] as u32;
-        let bin_a = pirate_binary(a as u8, 0);
+        let bin_a = pirate_bit(a as u8, 0);
         for b in 0..5usize {
             let prob_ab = prob_a * stds[1][b];
             let odds_ab = odds_a * odds[1][b] as u32;
-            let bin_ab = bin_a | pirate_binary(b as u8, 1);
+            let bin_ab = bin_a | pirate_bit(b as u8, 1);
             for c in 0..5usize {
                 let prob_abc = prob_ab * stds[2][c];
                 let odds_abc = odds_ab * odds[2][c] as u32;
-                let bin_abc = bin_ab | pirate_binary(c as u8, 2);
+                let bin_abc = bin_ab | pirate_bit(c as u8, 2);
                 for d in 0..5usize {
                     let prob_abcd = prob_abc * stds[3][d];
                     let odds_abcd = odds_abc * odds[3][d] as u32;
-                    let bin_abcd = bin_abc | pirate_binary(d as u8, 3);
+                    let bin_abcd = bin_abc | pirate_bit(d as u8, 3);
                     for e in 0..5usize {
                         if a == 0 && b == 0 && c == 0 && d == 0 && e == 0 {
                             continue;
                         }
                         let total_probs = prob_abcd * stds[4][e];
                         let total_odds = odds_abcd * odds[4][e] as u32;
-                        let total_bin = bin_abcd | pirate_binary(e as u8, 4);
+                        let total_bin = bin_abcd | pirate_bit(e as u8, 4);
                         let er = total_probs * total_odds as f64;
                         let maxbet = 1_000_000u32.div_ceil(total_odds);
                         bins.push(total_bin);
@@ -506,7 +530,7 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
         }
     }
 
-    RoundDictData {
+    RoundTables {
         bins,
         probs,
         odds: odds_vec,
@@ -515,15 +539,18 @@ pub fn make_round_dicts(stds: [[f64; 5]; 5], odds: [[u8; 5]; 5]) -> RoundDictDat
     }
 }
 
-pub fn build_chance_objects(
+/// Builds the payout distribution for a set of bets: for each possible total payout (in odds,
+/// not NP), the chance of hitting it, plus the cumulative and tail chances. Rows are sorted by
+/// payout. `bets` are pirate indices per arena and `bet_odds` are each bet's odds.
+pub fn build_chances(
     bets: &[[u8; 5]],
     bet_odds: &[u32],
     probabilities: [[f64; 5]; 5],
 ) -> Vec<Chance> {
-    let expanded = expand_ib_object(bets, bet_odds);
+    let expanded = build_payout_regions(bets, bet_odds);
     let mut win_table: HashMap<u32, f64> = HashMap::default();
     for (key, value) in expanded.iter() {
-        *win_table.entry(*value).or_insert(0.0) += ib_prob(*key, &probabilities);
+        *win_table.entry(*value).or_insert(0.0) += region_probability(*key, &probabilities);
     }
 
     let mut sorted: Vec<(u32, f64)> = win_table.into_iter().collect();
@@ -576,5 +603,66 @@ mod tests {
             err.to_string(),
             "Invalid amounts hash: Invalid amounts hash 'Aa1'. Must contain only characters a-z and A-Z."
         );
+    }
+
+    /// Brute-force oracle: for every one of the 4^5 winning outcomes, the payout is the sum of
+    /// the odds of every bet that accepts it. Each outcome must land in exactly one region, and
+    /// that region's payout must match.
+    fn assert_matches_brute_force(bets: &[[u8; 5]], bet_odds: &[u32]) {
+        let regions = build_payout_regions(bets, bet_odds);
+        for outcome in 0..4u32.pow(5) {
+            let winners: [u8; 5] = std::array::from_fn(|a| ((outcome >> (2 * a)) & 3) as u8 + 1);
+            let outcome_bin = indices_to_binary(winners);
+            let expected: u32 = bets
+                .iter()
+                .zip(bet_odds)
+                .filter(|(bet, _)| bet.iter().zip(&winners).all(|(&b, &w)| b == 0 || b == w))
+                .map(|(_, &odds)| odds)
+                .sum();
+
+            let mut hits = regions.iter().filter(|(&region, _)| {
+                is_nonempty(region & outcome_bin) && region & outcome_bin == outcome_bin
+            });
+            let (_, &payout) = hits.next().expect("outcome not covered by any region");
+            assert!(hits.next().is_none(), "outcome covered by multiple regions");
+            assert_eq!(payout, expected, "outcome {winners:?}");
+        }
+    }
+
+    #[test]
+    fn build_payout_regions_overlapping_bets() {
+        let bets = [
+            [1, 2, 0, 0, 0],
+            [1, 0, 3, 0, 0],
+            [0, 2, 3, 4, 0],
+            [1, 2, 3, 4, 1],
+        ];
+        assert_matches_brute_force(&bets, &[2, 3, 5, 7]);
+    }
+
+    #[test]
+    fn build_payout_regions_duplicate_bets_sum_odds() {
+        let bets = [[1, 1, 1, 1, 1], [1, 1, 1, 1, 1]];
+        assert_matches_brute_force(&bets, &[4, 6]);
+    }
+
+    #[test]
+    fn build_payout_regions_random_bet_sets() {
+        // small deterministic LCG so failures are reproducible without a rand dependency
+        let mut state = 0x2545_F491_4F6C_DD1Du64;
+        let mut next = move |modulus: u64| {
+            state = state
+                .wrapping_mul(6364136223846793005)
+                .wrapping_add(1442695040888963407);
+            (state >> 33) % modulus
+        };
+        for _ in 0..200 {
+            let count = next(12) as usize + 1;
+            let bets: Vec<[u8; 5]> = (0..count)
+                .map(|_| std::array::from_fn(|_| next(5) as u8))
+                .collect();
+            let odds: Vec<u32> = (0..count).map(|_| next(12) as u32 + 1).collect();
+            assert_matches_brute_force(&bets, &odds);
+        }
     }
 }

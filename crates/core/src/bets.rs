@@ -9,8 +9,8 @@ use crate::pirates::PartialPirateThings;
 use crate::{
     error::NfcError,
     math::{
-        amounts_hash_to_bet_amounts, bet_amounts_to_amounts_hash, bets_hash_to_bet_binaries,
-        bets_hash_value, binary_to_index, binary_to_indices, pirates_binary,
+        amounts_hash_to_bet_amounts, bet_amounts_to_amounts_hash, bet_indices_to_bets_hash,
+        bets_hash_to_bet_binaries, binary_to_indices, binary_to_table_index, indices_to_binary,
         BET_AMOUNT_MAX_SETTABLE, BET_AMOUNT_MIN,
     },
     nfc::NeoFoodClub,
@@ -31,7 +31,7 @@ pub enum BetAmounts {
 }
 
 impl BetAmounts {
-    /// Returns the bet amounts as a vector of Option<u32>
+    /// Returns the bet amounts as a vector of `Option<u32>`
     /// If the BetAmounts is None, returns None
     /// For AllSame, this requires the length parameter
     pub fn to_vec(&self, length: usize) -> Result<Option<Vec<Option<u32>>>, NfcError> {
@@ -230,7 +230,7 @@ impl Bets {
             return;
         };
 
-        // maxbets[i] is precomputed as 1_000_000.div_ceil(odds[i]) in make_round_dicts,
+        // maxbets[i] is precomputed as 1_000_000.div_ceil(odds[i]) in build_round_tables,
         // so we read it directly instead of recomputing the division per bet.
         let data = nfc.round_dict_data();
         let mut amounts = Vec::<Option<u32>>::with_capacity(self.array_indices.len());
@@ -246,7 +246,7 @@ impl Bets {
         let bin_indices: Vec<usize> = binaries
             .iter()
             .filter(|&&b| b != 0)
-            .map(|b| binary_to_index(*b))
+            .map(|b| binary_to_table_index(*b))
             .collect();
 
         Self::new(nfc, bin_indices)
@@ -261,7 +261,7 @@ impl Bets {
 
     /// Creates a new Bets struct from pirate indices
     pub fn from_indices(nfc: &NeoFoodClub, indices: Vec<[u8; 5]>) -> Self {
-        let bins: Vec<u32> = indices.iter().map(|i| pirates_binary(*i)).collect();
+        let bins: Vec<u32> = indices.iter().map(|i| indices_to_binary(*i)).collect();
 
         Self::from_binaries(nfc, bins)
     }
@@ -292,7 +292,7 @@ impl Bets {
 
     /// Returns a string of the hash of the bets
     pub fn bets_hash(&self) -> String {
-        bets_hash_value(self.get_indices())
+        bet_indices_to_bets_hash(self.get_indices())
     }
 
     /// Returns a string of the hash of the bet amounts, if it can
@@ -485,7 +485,7 @@ impl Bets {
         {
             let mut row = vec![(bet_index + 1).to_string()];
 
-            let bin_index = binary_to_index(*bet_binary);
+            let bin_index = binary_to_table_index(*bet_binary);
 
             let hex = format!("0x{bet_binary:0>5X}");
 

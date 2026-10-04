@@ -111,8 +111,8 @@ pub fn compute_payout_tables(
         }
     }
 
-    let odds_table = math::build_chance_objects(&bets, &bet_odds, probs);
-    let winnings_table = math::build_chance_objects(&bets, &bet_payoffs, probs);
+    let odds_table = math::build_chances(&bets, &bet_odds, probs);
+    let winnings_table = math::build_chances(&bets, &bet_payoffs, probs);
 
     let out = PayoutTablesOut {
         odds: odds_table.into_iter().map(ChanceOut::from).collect(),
@@ -123,10 +123,10 @@ pub fn compute_payout_tables(
 }
 
 /// Replaces `computePirateBinary(arenaIndex, pirateIndex)`. Note the argument
-/// order is swapped relative to `neofoodclub::math::pirate_binary(index, arena)`.
+/// order is swapped relative to `neofoodclub::math::pirate_bit(index, arena)`.
 #[wasm_bindgen(js_name = computePirateBinary)]
 pub fn compute_pirate_binary(arena_index: u8, pirate_index: u8) -> u32 {
-    math::pirate_binary(pirate_index, arena_index)
+    math::pirate_bit(pirate_index, arena_index)
 }
 
 /// Replaces `computePiratesBinary`. `pirates` must have exactly 5 elements.
@@ -135,7 +135,7 @@ pub fn compute_pirates_binary(pirates: Vec<u8>) -> Result<u32, JsError> {
     let indices: [u8; 5] = pirates
         .try_into()
         .map_err(|_| JsError::new("expected exactly 5 elements"))?;
-    Ok(math::pirates_binary(indices))
+    Ok(math::indices_to_binary(indices))
 }
 
 /// Replaces `computeBinaryToPirates`.
@@ -182,13 +182,13 @@ mod tests {
 
     #[test]
     fn compute_pirate_binary_matches_underlying_math_fn() {
-        assert_eq!(compute_pirate_binary(0, 1), math::pirate_binary(1, 0));
+        assert_eq!(compute_pirate_binary(0, 1), math::pirate_bit(1, 0));
     }
 
     #[test]
     fn compute_pirates_binary_happy_path() {
         let bin = compute_pirates_binary(vec![1, 2, 3, 4, 1]).unwrap();
-        assert_eq!(bin, math::pirates_binary([1, 2, 3, 4, 1]));
+        assert_eq!(bin, math::indices_to_binary([1, 2, 3, 4, 1]));
     }
 
     #[test]

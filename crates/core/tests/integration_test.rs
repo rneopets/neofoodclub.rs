@@ -54,7 +54,7 @@ mod tests {
 
     use chrono::NaiveTime;
     use neofoodclub::{
-        bets::BetAmounts, math::pirate_binary, modifier::Modifier, pirates::PartialPirateThings,
+        bets::BetAmounts, math::pirate_bit, modifier::Modifier, pirates::PartialPirateThings,
     };
     use serde::Deserialize;
 
@@ -592,16 +592,16 @@ mod tests {
     }
 
     #[test]
-    fn test_bets_hash_to_bets_count() {
+    fn test_bets_hash_to_bet_count() {
         let bets_hash = "aukacfukycuulacauutcbukdc";
-        let bets = math::bets_hash_to_bets_count(bets_hash).unwrap();
+        let bets = math::bets_hash_to_bet_count(bets_hash).unwrap();
 
         assert_eq!(bets, 10);
     }
 
     #[test]
-    fn test_bets_indices_to_bet_binaries() {
-        let bins = neofoodclub::math::bets_indices_to_bet_binaries(vec![
+    fn test_bet_indices_to_bet_binaries() {
+        let bins = neofoodclub::math::bet_indices_to_bet_binaries(vec![
             [1, 0, 0, 0, 0],
             [0, 1, 0, 0, 0],
             [0, 0, 1, 0, 0],
@@ -993,8 +993,8 @@ mod tests {
     }
 
     #[test]
-    fn test_bets_hash_to_bets_count_invalid() {
-        let result = math::bets_hash_to_bets_count("🎲");
+    fn test_bets_hash_to_bet_count_invalid() {
+        let result = math::bets_hash_to_bet_count("🎲");
         assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("Invalid bet hash"));
     }
@@ -2199,13 +2199,13 @@ mod tests {
     #[test]
     fn test_math_functions() {
         use neofoodclub::math::{
-            amounts_hash_to_bet_amounts, bets_hash_check, binary_to_indices, pirate_binary,
-            pirates_binary, random_full_pirates_binary,
+            amounts_hash_to_bet_amounts, bets_hash_check, binary_to_indices, indices_to_binary,
+            pirate_bit, random_full_pirates_binary,
         };
 
-        assert_eq!(pirate_binary(3, 2), 0x200);
-        assert_eq!(pirate_binary(0, 2), 0);
-        assert_eq!(pirates_binary([0, 1, 2, 3, 4]), 0x08421);
+        assert_eq!(pirate_bit(3, 2), 0x200);
+        assert_eq!(pirate_bit(0, 2), 0);
+        assert_eq!(indices_to_binary([0, 1, 2, 3, 4]), 0x08421);
         assert_eq!(random_full_pirates_binary().count_ones(), 5);
         assert_eq!(binary_to_indices(1), [0, 0, 0, 0, 4]);
         assert!(bets_hash_check("abcdefg").is_ok());
@@ -2228,11 +2228,11 @@ mod tests {
                         for m in 0..4 {
                             assert_eq!(
                                 binary_to_indices(
-                                    pirate_binary(i, 0)
-                                        | pirate_binary(j, 1)
-                                        | pirate_binary(k, 2)
-                                        | pirate_binary(l, 3)
-                                        | pirate_binary(m, 4)
+                                    pirate_bit(i, 0)
+                                        | pirate_bit(j, 1)
+                                        | pirate_bit(k, 2)
+                                        | pirate_bit(l, 3)
+                                        | pirate_bit(m, 4)
                                 ),
                                 [i, j, k, l, m]
                             );

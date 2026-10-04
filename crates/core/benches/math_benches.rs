@@ -17,16 +17,13 @@ const ROUND_DATA_URL: &str = r#"/#round=7956&pirates=[[2,8,14,11],[20,7,6,10],[1
 const BET_AMOUNT: u32 = 8000;
 
 #[divan::bench]
-fn bench_pirate_binary() {
-    divan::black_box(math::pirate_binary(
-        divan::black_box(3),
-        divan::black_box(2),
-    ));
+fn bench_pirate_bit() {
+    divan::black_box(math::pirate_bit(divan::black_box(3), divan::black_box(2)));
 }
 
 #[divan::bench]
-fn bench_pirates_binary() {
-    divan::black_box(math::pirates_binary(divan::black_box([1, 2, 3, 4, 1])));
+fn bench_indices_to_binary() {
+    divan::black_box(math::indices_to_binary(divan::black_box([1, 2, 3, 4, 1])));
 }
 
 #[divan::bench]
@@ -55,9 +52,9 @@ fn bench_bets_hash_to_bet_indices_large() {
 }
 
 #[divan::bench]
-fn bench_bets_hash_to_bets_count() {
+fn bench_bets_hash_to_bet_count() {
     divan::black_box(
-        math::bets_hash_to_bets_count(divan::black_box("dgpqsxgtqsigqqsngrqsegpvsdgfqqsgsqsdgk"))
+        math::bets_hash_to_bet_count(divan::black_box("dgpqsxgtqsigqqsngrqsegpvsdgfqqsgsqsdgk"))
             .unwrap(),
     );
 }
@@ -86,13 +83,13 @@ fn bench_bets_hash_to_bet_binaries() {
 }
 
 #[divan::bench]
-fn bench_bets_hash_value() {
+fn bench_bet_indices_to_bets_hash() {
     let indices = vec![[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0]];
-    divan::black_box(math::bets_hash_value(divan::black_box(indices)));
+    divan::black_box(math::bet_indices_to_bets_hash(divan::black_box(indices)));
 }
 
 #[divan::bench]
-fn bench_expand_ib_object() {
+fn bench_build_payout_regions() {
     let bets = vec![
         [1, 4, 2, 2, 0],
         [1, 0, 2, 2, 4],
@@ -101,7 +98,7 @@ fn bench_expand_ib_object() {
         [0, 1, 2, 2, 0],
     ];
     let bet_odds = vec![13, 26, 52, 13, 26];
-    divan::black_box(math::expand_ib_object(
+    divan::black_box(math::build_payout_regions(
         divan::black_box(&bets),
         divan::black_box(&bet_odds),
     ));
@@ -122,7 +119,7 @@ fn bench_argsort_slice_3124() {
 }
 
 #[divan::bench]
-fn bench_make_round_dicts() {
+fn bench_build_round_tables() {
     let stds = [
         [1.0, 0.25, 0.25, 0.25, 0.25],
         [1.0, 0.25, 0.25, 0.25, 0.25],
@@ -137,14 +134,14 @@ fn bench_make_round_dicts() {
         [1, 2, 3, 4, 5],
         [1, 2, 3, 4, 5],
     ];
-    divan::black_box(math::make_round_dicts(
+    divan::black_box(math::build_round_tables(
         divan::black_box(stds),
         divan::black_box(odds),
     ));
 }
 
 #[divan::bench]
-fn bench_build_chance_objects() {
+fn bench_build_chances() {
     let bets = vec![[1, 4, 2, 2, 0], [1, 0, 2, 2, 4], [0, 4, 2, 2, 4]];
     let bet_odds = vec![13, 26, 52];
     let probabilities = [
@@ -154,7 +151,7 @@ fn bench_build_chance_objects() {
         [1.0, 0.25, 0.25, 0.25, 0.25],
         [1.0, 0.25, 0.25, 0.25, 0.25],
     ];
-    divan::black_box(math::build_chance_objects(
+    divan::black_box(math::build_chances(
         divan::black_box(&bets),
         divan::black_box(&bet_odds),
         divan::black_box(probabilities),
@@ -167,7 +164,7 @@ fn bench_build_chance_objects() {
 // possible bet combinations rather than a handful).
 
 #[divan::bench]
-fn bench_expand_ib_object_full() {
+fn bench_build_payout_regions_full() {
     let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let data = nfc.round_dict_data();
     let bets: Vec<[u8; 5]> = data
@@ -177,14 +174,14 @@ fn bench_expand_ib_object_full() {
         .collect();
     let bet_odds: Vec<u32> = data.odds.clone();
 
-    divan::black_box(math::expand_ib_object(
+    divan::black_box(math::build_payout_regions(
         divan::black_box(&bets),
         divan::black_box(&bet_odds),
     ));
 }
 
 #[divan::bench]
-fn bench_build_chance_objects_full() {
+fn bench_build_chances_full() {
     let nfc = NeoFoodClub::from_json(ROUND_DATA_JSON, Some(BET_AMOUNT), None, None).unwrap();
     let data = nfc.round_dict_data();
     let bets: Vec<[u8; 5]> = data
@@ -195,7 +192,7 @@ fn bench_build_chance_objects_full() {
     let bet_odds: Vec<u32> = data.odds.clone();
     let probabilities = nfc.probabilities();
 
-    divan::black_box(math::build_chance_objects(
+    divan::black_box(math::build_chances(
         divan::black_box(&bets),
         divan::black_box(&bet_odds),
         divan::black_box(probabilities),

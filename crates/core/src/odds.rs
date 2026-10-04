@@ -1,6 +1,6 @@
 use crate::{
     chance::Chance,
-    math::{binary_to_indices, build_chance_objects},
+    math::{binary_to_indices, build_chances},
     nfc::NeoFoodClub,
 };
 
@@ -21,7 +21,7 @@ impl Odds {
             .map(|&index| (binary_to_indices(data.bins[index]), data.odds[index]))
             .unzip();
 
-        let chances = build_chance_objects(&pirate_indices, &odds_values, nfc.probabilities());
+        let chances = build_chances(&pirate_indices, &odds_values, nfc.probabilities());
 
         Self {
             chances,

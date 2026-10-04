@@ -17,13 +17,13 @@ impl Math {
     pub const BET_AMOUNT_MAX: u32 = neofoodclub::math::BET_AMOUNT_MAX;
 
     #[staticmethod]
-    fn pirate_binary(index: u8, arena: u8) -> u32 {
-        neofoodclub::math::pirate_binary(index, arena)
+    fn pirate_bit(index: u8, arena: u8) -> u32 {
+        neofoodclub::math::pirate_bit(index, arena)
     }
 
     #[staticmethod]
-    fn pirates_binary(bets_indices: [u8; 5]) -> u32 {
-        neofoodclub::math::pirates_binary(bets_indices)
+    fn indices_to_binary(bets_indices: [u8; 5]) -> u32 {
+        neofoodclub::math::indices_to_binary(bets_indices)
     }
 
     #[staticmethod]
@@ -44,8 +44,8 @@ impl Math {
     }
 
     #[staticmethod]
-    fn bets_hash_value(bets_indices: Vec<[u8; 5]>) -> String {
-        neofoodclub::math::bets_hash_value(bets_indices)
+    fn bet_indices_to_bets_hash(bets_indices: Vec<[u8; 5]>) -> String {
+        neofoodclub::math::bet_indices_to_bets_hash(bets_indices)
     }
 
     #[staticmethod]
@@ -65,33 +65,33 @@ impl Math {
     }
 
     #[staticmethod]
-    fn bets_hash_to_bets_count(bets_hash: &str) -> PyResult<usize> {
-        neofoodclub::math::bets_hash_to_bets_count(bets_hash)
+    fn bets_hash_to_bet_count(bets_hash: &str) -> PyResult<usize> {
+        neofoodclub::math::bets_hash_to_bet_count(bets_hash)
             .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
     }
 
     #[staticmethod]
-    fn bets_indices_to_bet_binaries(bets_indices: Vec<[u8; 5]>) -> Vec<u32> {
-        neofoodclub::math::bets_indices_to_bet_binaries(bets_indices)
+    fn bet_indices_to_bet_binaries(bets_indices: Vec<[u8; 5]>) -> Vec<u32> {
+        neofoodclub::math::bet_indices_to_bet_binaries(bets_indices)
     }
 
     #[staticmethod]
-    fn build_chance_objects(
+    fn build_chances(
         bets: Vec<[u8; 5]>,
         bet_odds: Vec<u32>,
         probabilities: [[f64; 5]; 5],
     ) -> Vec<Chance> {
-        neofoodclub::math::build_chance_objects(&bets, &bet_odds, probabilities)
+        neofoodclub::math::build_chances(&bets, &bet_odds, probabilities)
             .into_iter()
             .map(Chance::from)
             .collect()
     }
 
     #[staticmethod]
-    fn expand_ib_object(
+    fn build_payout_regions(
         bets: Vec<[u8; 5]>,
         bet_odds: Vec<u32>,
     ) -> neofoodclub::math::FxHashMap<u32, u32> {
-        neofoodclub::math::expand_ib_object(&bets, &bet_odds)
+        neofoodclub::math::build_payout_regions(&bets, &bet_odds)
     }
 }

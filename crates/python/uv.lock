@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.11"
 
 [[package]]
@@ -158,7 +158,7 @@ dev = [
 dev = [
     { name = "coverage", specifier = ">=7.6.3" },
     { name = "maturin", specifier = ">=1.0,<2.0" },
-    { name = "pytest", specifier = ">=8.3.3" },
+    { name = "pytest", specifier = ">=9.1.1" },
     { name = "setuptools-rust", specifier = ">=1.10.2" },
 ]
 

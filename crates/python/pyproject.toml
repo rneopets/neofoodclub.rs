@@ -81,5 +81,5 @@ dev = [
     "coverage>=7.16.2",
     "maturin>=1.15.0,<2.0",
     "pytest>=9.1.1",
-    "setuptools-rust>=1.10.2",
+    "setuptools-rust>=1.13.0",
 ]

@@ -174,7 +174,7 @@ dev = [
     { name = "coverage", specifier = ">=7.16.2" },
     { name = "maturin", specifier = ">=1.15.0,<2.0" },
     { name = "pytest", specifier = ">=9.1.1" },
-    { name = "setuptools-rust", specifier = ">=1.10.2" },
+    { name = "setuptools-rust", specifier = ">=1.13.0" },
 ]
 
 [[package]]
@@ -240,13 +240,13 @@ wheels = [
 
 [[package]]
 name = "setuptools-rust"
-version = "1.12.0"
+version = "1.13.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "semantic-version" },
     { name = "setuptools" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bc/c4/8d3d282cee60d3ea0369fa15ce27387810040360adb4133e31990a7a2aba/setuptools_rust-1.12.0.tar.gz", hash = "sha256:d94a93f0c97751c17014565f07bdc324bee45d396cd1bba83d8e7af92b945f0c", size = 310984, upload-time = "2025-08-29T18:24:29.712Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/68/ba/b31781d61bf9ee3c232a1d1160db11c11cdeae1d44e06c90723b25a8279f/setuptools_rust-1.13.0.tar.gz", hash = "sha256:f2afcf4baeee689910ce49cfa8aad4e08cce72f417449bcc32891b8664fdc726", size = 314100, upload-time = "2026-06-27T21:45:02.976Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f9/7b/d05b1778f2d4e354d103e3421c6267d923032fefcc5ca5b7df0cb21cefd0/setuptools_rust-1.12.0-py3-none-any.whl", hash = "sha256:7e7db90547f224a835b45f5ad90c983340828a345554a9a660bdb2de8605dcdd", size = 28172, upload-time = "2025-08-29T18:24:28.804Z" },
+    { url = "https://files.pythonhosted.org/packages/0b/80/909e46e684e47b116ed145bf2a1a8f5f7c9d90e8c3f8f7fce6a529c0068d/setuptools_rust-1.13.0-py3-none-any.whl", hash = "sha256:666439c4d90e968bb625bcf87ec0aa02b4f49e599d2f5dc255c633a04e8eca99", size = 30536, upload-time = "2026-06-27T21:45:01.583Z" },
 ]

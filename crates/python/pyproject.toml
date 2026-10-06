@@ -22,7 +22,7 @@ classifiers = [
 ]
 
 [build-system]
-requires = ["maturin>=1.0,<2.0"]
+requires = ["maturin>=1.15.0,<2.0"]
 build-backend = "maturin"
 
 [tool.coverage.run]
@@ -79,7 +79,7 @@ line-ending = "auto"
 [dependency-groups]
 dev = [
     "coverage>=7.16.2",
-    "maturin>=1.0,<2.0",
+    "maturin>=1.15.0,<2.0",
     "pytest>=9.1.1",
     "setuptools-rust>=1.10.2",
 ]

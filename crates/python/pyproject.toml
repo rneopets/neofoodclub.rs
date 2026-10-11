@@ -3,7 +3,7 @@ name = "neofoodclub"
 dynamic = ["version"]
 description = "A Python implementation of functionality used in https://neofood.club"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.14.8"
 dependencies = []
 license = { file = "LICENSE" }
 classifiers = [

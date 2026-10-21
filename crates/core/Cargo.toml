@@ -37,4 +37,4 @@ name = "math_benches"
 harness = false
 
 [dev-dependencies]
-divan = { version = "5.0.0", package = "codspeed-divan-compat" }
+divan = { version = "6.0.0", package = "codspeed-divan-compat" }
